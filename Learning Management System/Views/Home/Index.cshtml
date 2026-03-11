@@ -1,0 +1,55 @@
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="text-center mb-5">
+    <h1 class="display-4">Learning Management System</h1>
+    <p class="lead text-muted">Manage courses, assignments, and grades in one place.</p>
+    @if (User.Identity?.IsAuthenticated != true)
+    {
+        <a asp-controller="Account" asp-action="Register" class="btn btn-primary btn-lg me-2">Get Started</a>
+        <a asp-controller="Account" asp-action="Login" class="btn btn-outline-secondary btn-lg">Login</a>
+    }
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card h-100 text-center p-4">
+            <h5 class="card-title">Courses</h5>
+            <p class="card-text">Browse and enroll in courses taught by expert instructors.</p>
+            <a asp-controller="Course" asp-action="Index" class="btn btn-outline-primary">View Courses</a>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 text-center p-4">
+            <h5 class="card-title">Assignments</h5>
+            <p class="card-text">Complete assignments and track your progress throughout the course.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 text-center p-4">
+            <h5 class="card-title">Grades</h5>
+            <p class="card-text">Receive feedback and grades from instructors on your work.</p>
+        </div>
+    </div>
+</div>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <div class="mt-5">
+        <h3>Quick Links</h3>
+        <div class="list-group">
+            @if (User.IsInRole("Student"))
+            {
+                <a asp-controller="Course" asp-action="Enrolled" class="list-group-item list-group-item-action">My Enrolled Courses</a>
+                <a asp-controller="Submission" asp-action="MySubmissions" class="list-group-item list-group-item-action">My Submissions</a>
+            }
+            @if (User.IsInRole("Instructor") || User.IsInRole("Admin"))
+            {
+                <a asp-controller="Course" asp-action="MyCourses" class="list-group-item list-group-item-action">My Courses</a>
+                <a asp-controller="Course" asp-action="Create" class="list-group-item list-group-item-action">Create New Course</a>
+            }
+            <a asp-controller="Account" asp-action="Profile" class="list-group-item list-group-item-action">My Profile</a>
+        </div>
+    </div>
+}
