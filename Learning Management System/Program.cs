@@ -2,6 +2,7 @@ using System.Text;
 using LMS.Data;
 using LMS.Middleware;
 using LMS.Models;
+using LMS.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -49,6 +50,9 @@ builder.Services.AddAuthentication(options =>
     });
 
 builder.Services.AddAuthorization();
+
+// ----- Application Services -----
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ----- Controllers -----
 builder.Services.AddControllers();
