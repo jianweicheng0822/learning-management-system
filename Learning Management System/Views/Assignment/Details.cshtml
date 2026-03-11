@@ -1,0 +1,23 @@
+@model LMS.DTOs.AssignmentDto
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<h2>@Model.Title</h2>
+<p class="text-muted">Course: @Model.CourseName | Due: @Model.DueDate.ToString("MMM dd, yyyy HH:mm") | Submissions: @Model.SubmissionCount</p>
+<p>@Model.Description</p>
+
+<div class="mb-3">
+    @if (User.IsInRole("Student"))
+    {
+        <a asp-controller="Submission" asp-action="Create" asp-route-assignmentId="@Model.Id" class="btn btn-success">Submit Assignment</a>
+    }
+    @if (User.IsInRole("Instructor") || User.IsInRole("Admin"))
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Edit</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Delete</a>
+        <a asp-controller="Submission" asp-action="Index" asp-route-assignmentId="@Model.Id" class="btn btn-outline-primary">View Submissions</a>
+    }
+</div>
+
+<a asp-controller="Course" asp-action="Details" asp-route-id="@Model.CourseId" class="btn btn-sm btn-outline-secondary">Back to Course</a>

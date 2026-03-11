@@ -1,0 +1,53 @@
+@model IList<LMS.DTOs.AssignmentDto>
+@{
+    ViewData["Title"] = "Assignments";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Assignments</h2>
+    @if (User.IsInRole("Instructor") || User.IsInRole("Admin"))
+    {
+        <a asp-action="Create" asp-route-courseId="@ViewBag.CourseId" class="btn btn-primary">Add Assignment</a>
+    }
+</div>
+
+<a asp-controller="Course" asp-action="Details" asp-route-id="@ViewBag.CourseId" class="btn btn-sm btn-outline-secondary mb-3">Back to Course</a>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">No assignments for this course.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Due Date</th>
+                <th>Submissions</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in Model)
+            {
+                <tr>
+                    <td>@a.Title</td>
+                    <td>@a.DueDate.ToString("MMM dd, yyyy")</td>
+                    <td>@a.SubmissionCount</td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@a.Id" class="btn btn-sm btn-outline-primary">View</a>
+                        @if (User.IsInRole("Instructor") || User.IsInRole("Admin"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        }
+                        @if (User.IsInRole("Student"))
+                        {
+                            <a asp-controller="Submission" asp-action="Create" asp-route-assignmentId="@a.Id" class="btn btn-sm btn-success">Submit</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
