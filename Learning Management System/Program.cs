@@ -84,4 +84,17 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+// ----- Seed Roles -----
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    string[] roles = ["Admin", "Instructor", "Student"];
+
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+            await roleManager.CreateAsync(new IdentityRole(role));
+    }
+}
+
 app.Run();
