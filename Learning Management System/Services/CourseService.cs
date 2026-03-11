@@ -106,6 +106,34 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         await db.SaveChangesAsync();
     }
 
+    public async Task EnrollStudentAsync(int courseId, string studentId)
+    {
+        var courseExists = await db.Courses.AnyAsync(c => c.Id == courseId);
+        if (!courseExists) throw new KeyNotFoundException("Course not found.");
+
+        var alreadyEnrolled = await db.Enrollments
+            .AnyAsync(e => e.CourseId == courseId && e.StudentId == studentId);
+        if (alreadyEnrolled) throw new InvalidOperationException("Already enrolled in this course.");
+
+        db.Enrollments.Add(new Enrollment
+        {
+            CourseId = courseId,
+            StudentId = studentId
+        });
+
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UnenrollStudentAsync(int courseId, string studentId)
+    {
+        var enrollment = await db.Enrollments
+            .FirstOrDefaultAsync(e => e.CourseId == courseId && e.StudentId == studentId)
+            ?? throw new KeyNotFoundException("Enrollment not found.");
+
+        db.Enrollments.Remove(enrollment);
+        await db.SaveChangesAsync();
+    }
+
     public async Task<IList<CourseDto>> GetByInstructorAsync(string instructorId)
     {
         return await db.Courses
@@ -121,6 +149,25 @@ public class CourseService(ApplicationDbContext db) : ICourseService
                 InstructorName = c.Instructor.FullName,
                 EnrolledCount = c.Enrollments.Count,
                 CreatedAt = c.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<IList<CourseDto>> GetEnrolledCoursesAsync(string studentId)
+    {
+        return await db.Enrollments
+            .Where(e => e.StudentId == studentId)
+            .Include(e => e.Course).ThenInclude(c => c.Instructor)
+            .Include(e => e.Course).ThenInclude(c => c.Enrollments)
+            .Select(e => new CourseDto
+            {
+                Id = e.Course.Id,
+                Title = e.Course.Title,
+                Description = e.Course.Description,
+                InstructorId = e.Course.InstructorId,
+                InstructorName = e.Course.Instructor.FullName,
+                EnrolledCount = e.Course.Enrollments.Count,
+                CreatedAt = e.Course.CreatedAt
             })
             .ToListAsync();
     }

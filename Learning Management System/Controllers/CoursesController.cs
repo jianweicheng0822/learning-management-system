@@ -57,6 +57,26 @@ public class CoursesController(ICourseService courseService) : ControllerBase
         return Ok(ApiResponse.Ok("Course deleted."));
     }
 
+    /// <summary>POST api/courses/{id}/enroll</summary>
+    [Authorize(Roles = "Student")]
+    [HttpPost("{id:int}/enroll")]
+    public async Task<ActionResult<ApiResponse>> Enroll(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        await courseService.EnrollStudentAsync(id, userId);
+        return Ok(ApiResponse.Ok("Enrolled successfully."));
+    }
+
+    /// <summary>DELETE api/courses/{id}/enroll</summary>
+    [Authorize(Roles = "Student")]
+    [HttpDelete("{id:int}/enroll")]
+    public async Task<ActionResult<ApiResponse>> Unenroll(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        await courseService.UnenrollStudentAsync(id, userId);
+        return Ok(ApiResponse.Ok("Unenrolled successfully."));
+    }
+
     /// <summary>GET api/courses/my-courses (instructor)</summary>
     [Authorize(Roles = "Instructor")]
     [HttpGet("my-courses")]
@@ -64,6 +84,16 @@ public class CoursesController(ICourseService courseService) : ControllerBase
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var courses = await courseService.GetByInstructorAsync(userId);
+        return Ok(ApiResponse<IList<CourseDto>>.Ok(courses));
+    }
+
+    /// <summary>GET api/courses/enrolled (student)</summary>
+    [Authorize(Roles = "Student")]
+    [HttpGet("enrolled")]
+    public async Task<ActionResult<ApiResponse<IList<CourseDto>>>> GetEnrolled()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var courses = await courseService.GetEnrolledCoursesAsync(userId);
         return Ok(ApiResponse<IList<CourseDto>>.Ok(courses));
     }
 }

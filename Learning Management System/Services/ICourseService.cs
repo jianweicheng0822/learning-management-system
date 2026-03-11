@@ -9,5 +9,8 @@ public interface ICourseService
     Task<CourseDetailDto> GetByIdAsync(int id);
     Task<CourseDto> UpdateAsync(int id, string instructorId, UpdateCourseRequest request);
     Task DeleteAsync(int id, string instructorId);
+    Task EnrollStudentAsync(int courseId, string studentId);
+    Task UnenrollStudentAsync(int courseId, string studentId);
     Task<IList<CourseDto>> GetByInstructorAsync(string instructorId);
+    Task<IList<CourseDto>> GetEnrolledCoursesAsync(string studentId);
 }
