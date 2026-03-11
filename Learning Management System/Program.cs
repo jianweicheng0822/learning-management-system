@@ -1,3 +1,5 @@
+using LMS.Middleware;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ----- Controllers -----
@@ -16,6 +18,9 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+// ----- Middleware Pipeline -----
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
