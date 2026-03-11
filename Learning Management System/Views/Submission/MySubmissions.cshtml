@@ -1,0 +1,46 @@
+@model IList<LMS.DTOs.SubmissionDto>
+@{
+    ViewData["Title"] = "My Submissions";
+}
+
+<h2>My Submissions</h2>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">You haven't submitted any assignments yet.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Assignment</th>
+                <th>Submitted</th>
+                <th>Grade</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>@s.AssignmentTitle</td>
+                    <td>@s.SubmittedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                    <td>
+                        @if (s.Grade != null)
+                        {
+                            <span class="badge bg-success">@s.Grade.Score / 100</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        }
+                    </td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-outline-primary">View</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

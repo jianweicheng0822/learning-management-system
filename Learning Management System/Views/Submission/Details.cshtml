@@ -1,0 +1,63 @@
+@model LMS.DTOs.SubmissionDto
+@{
+    ViewData["Title"] = "Submission Details";
+}
+
+<h2>Submission Details</h2>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Assignment</dt>
+            <dd class="col-sm-9">@Model.AssignmentTitle</dd>
+
+            <dt class="col-sm-3">Student</dt>
+            <dd class="col-sm-9">@Model.StudentName</dd>
+
+            <dt class="col-sm-3">Submitted</dt>
+            <dd class="col-sm-9">@Model.SubmittedAt.ToString("MMM dd, yyyy HH:mm")</dd>
+
+            @if (Model.FilePath != null)
+            {
+                <dt class="col-sm-3">File</dt>
+                <dd class="col-sm-9">@Model.FilePath</dd>
+            }
+        </dl>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.TextContent))
+{
+    <h4>Submission Content</h4>
+    <div class="card mb-3">
+        <div class="card-body">
+            <pre class="mb-0">@Model.TextContent</pre>
+        </div>
+    </div>
+}
+
+@if (Model.Grade != null)
+{
+    <h4>Grade</h4>
+    <div class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Score</dt>
+                <dd class="col-sm-9"><span class="badge bg-success fs-6">@Model.Grade.Score / 100</span></dd>
+
+                <dt class="col-sm-3">Feedback</dt>
+                <dd class="col-sm-9">@(Model.Grade.Feedback ?? "No feedback provided.")</dd>
+
+                <dt class="col-sm-3">Graded By</dt>
+                <dd class="col-sm-9">@Model.Grade.GradedByName</dd>
+
+                <dt class="col-sm-3">Graded At</dt>
+                <dd class="col-sm-9">@Model.Grade.GradedAt.ToString("MMM dd, yyyy HH:mm")</dd>
+            </dl>
+        </div>
+    </div>
+}
+else if (User.IsInRole("Instructor") || User.IsInRole("Admin"))
+{
+    <a asp-controller="Grade" asp-action="Grade" asp-route-submissionId="@Model.Id" class="btn btn-success">Grade This Submission</a>
+}

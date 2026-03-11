@@ -1,0 +1,57 @@
+@model IList<LMS.DTOs.SubmissionDto>
+@{
+    ViewData["Title"] = "Submissions";
+}
+
+<h2>Submissions</h2>
+<p class="text-muted">Assignment: @ViewBag.AssignmentTitle</p>
+
+<a asp-controller="Assignment" asp-action="Details" asp-route-id="@ViewBag.AssignmentId" class="btn btn-sm btn-outline-secondary mb-3">Back to Assignment</a>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">No submissions yet.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Submitted</th>
+                <th>Grade</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>@s.StudentName</td>
+                    <td>@s.SubmittedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                    <td>
+                        @if (s.Grade != null)
+                        {
+                            <span class="badge bg-success">@s.Grade.Score / 100</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Not graded</span>
+                        }
+                    </td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@s.Id" class="btn btn-sm btn-outline-primary">View</a>
+                        @if (s.Grade == null)
+                        {
+                            <a asp-controller="Grade" asp-action="Grade" asp-route-submissionId="@s.Id" class="btn btn-sm btn-success">Grade</a>
+                        }
+                        else
+                        {
+                            <a asp-controller="Grade" asp-action="Edit" asp-route-submissionId="@s.Id" class="btn btn-sm btn-outline-secondary">Edit Grade</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
