@@ -1,0 +1,23 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<h2>My Profile</h2>
+
+<div class="card" style="max-width: 500px;">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Full Name</dt>
+            <dd class="col-sm-8">@Model.FullName</dd>
+
+            <dt class="col-sm-4">Email</dt>
+            <dd class="col-sm-8">@Model.Email</dd>
+
+            <dt class="col-sm-4">Role(s)</dt>
+            <dd class="col-sm-8">@string.Join(", ", Model.Roles)</dd>
+        </dl>
+    </div>
+</div>
+
+<a asp-action="EditProfile" class="btn btn-primary mt-3">Edit Profile</a>
