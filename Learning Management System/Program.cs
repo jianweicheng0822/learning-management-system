@@ -53,6 +53,7 @@ builder.Services.AddAuthorization();
 
 // ----- Application Services -----
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
 
 // ----- Controllers -----
 builder.Services.AddControllers();
