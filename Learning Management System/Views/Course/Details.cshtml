@@ -1,0 +1,92 @@
+@model LMS.DTOs.CourseDetailDto
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<h2>@Model.Title</h2>
+<p class="text-muted">Instructor: @Model.InstructorName | Created: @Model.CreatedAt.ToString("MMM dd, yyyy")</p>
+<p>@Model.Description</p>
+
+<div class="mb-3">
+    @if (User.IsInRole("Student"))
+    {
+        <form asp-action="Enroll" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-success btn-sm">Enroll</button>
+        </form>
+        <form asp-action="Unenroll" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-warning btn-sm">Unenroll</button>
+        </form>
+    }
+    @if (User.IsInRole("Instructor") || User.IsInRole("Admin"))
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+        <a asp-controller="Assignment" asp-action="Create" asp-route-courseId="@Model.Id" class="btn btn-sm btn-primary">Add Assignment</a>
+    }
+</div>
+
+<h4>Assignments (@Model.Assignments.Count)</h4>
+@if (Model.Assignments.Any())
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Due Date</th>
+                <th>Submissions</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in Model.Assignments)
+            {
+                <tr>
+                    <td>@a.Title</td>
+                    <td>@a.DueDate.ToString("MMM dd, yyyy")</td>
+                    <td>@a.SubmissionCount</td>
+                    <td>
+                        <a asp-controller="Assignment" asp-action="Details" asp-route-id="@a.Id" class="btn btn-sm btn-outline-primary">View</a>
+                        @if (User.IsInRole("Student"))
+                        {
+                            <a asp-controller="Submission" asp-action="Create" asp-route-assignmentId="@a.Id" class="btn btn-sm btn-success">Submit</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p class="text-muted">No assignments yet.</p>
+}
+
+<h4 class="mt-4">Enrolled Students (@Model.EnrolledStudents.Count)</h4>
+@if (Model.EnrolledStudents.Any())
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Enrolled</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model.EnrolledStudents)
+            {
+                <tr>
+                    <td>@s.FullName</td>
+                    <td>@s.Email</td>
+                    <td>@s.EnrolledAt.ToString("MMM dd, yyyy")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p class="text-muted">No students enrolled yet.</p>
+}

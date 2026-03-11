@@ -1,0 +1,25 @@
+@model LMS.DTOs.CourseDetailDto
+@{
+    ViewData["Title"] = "Delete Course";
+}
+
+<h2>Delete Course</h2>
+<div class="alert alert-danger">
+    <p>Are you sure you want to delete <strong>@Model.Title</strong>?</p>
+    <p>This will also remove all associated assignments, submissions, and grades.</p>
+</div>
+
+<dl class="row">
+    <dt class="col-sm-3">Title</dt>
+    <dd class="col-sm-9">@Model.Title</dd>
+    <dt class="col-sm-3">Instructor</dt>
+    <dd class="col-sm-9">@Model.InstructorName</dd>
+    <dt class="col-sm-3">Students</dt>
+    <dd class="col-sm-9">@Model.EnrolledCount</dd>
+</dl>
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+</form>

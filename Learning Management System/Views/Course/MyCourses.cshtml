@@ -1,0 +1,41 @@
+@model IList<LMS.DTOs.CourseDto>
+@{
+    ViewData["Title"] = "My Courses";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>My Courses</h2>
+    <a asp-action="Create" class="btn btn-primary">Create Course</a>
+</div>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">You haven't created any courses yet.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Students</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var course in Model)
+            {
+                <tr>
+                    <td>@course.Title</td>
+                    <td>@course.EnrolledCount</td>
+                    <td>@course.CreatedAt.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@course.Id" class="btn btn-sm btn-outline-primary">View</a>
+                        <a asp-action="Edit" asp-route-id="@course.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

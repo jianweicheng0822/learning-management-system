@@ -1,0 +1,32 @@
+@model IList<LMS.DTOs.CourseDto>
+@{
+    ViewData["Title"] = "Enrolled Courses";
+}
+
+<h2>Enrolled Courses</h2>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">You haven't enrolled in any courses yet.</p>
+    <a asp-action="Index" class="btn btn-primary">Browse Courses</a>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var course in Model)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@course.Title</h5>
+                        <p class="card-text text-muted">Instructor: @course.InstructorName</p>
+                    </div>
+                    <div class="card-footer">
+                        <a asp-action="Details" asp-route-id="@course.Id" class="btn btn-sm btn-outline-primary">View</a>
+                        <a asp-controller="Grade" asp-action="MyGrades" asp-route-courseId="@course.Id" class="btn btn-sm btn-outline-info">Grades</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
