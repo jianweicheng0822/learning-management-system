@@ -1,0 +1,17 @@
+[Unit]
+Description=Learning Management System
+After=network.target mysql.service
+
+[Service]
+WorkingDirectory=/var/www/lms
+ExecStart=/usr/bin/dotnet /var/www/lms/Learning\ Management\ System.dll
+Restart=always
+RestartSec=10
+SyslogIdentifier=lms
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://localhost:5000
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+[Install]
+WantedBy=multi-user.target
