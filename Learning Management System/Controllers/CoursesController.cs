@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using LMS.DTOs;
 using LMS.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,9 +9,11 @@ namespace LMS.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class CoursesController(ICourseService courseService) : ControllerBase
 {
     /// <summary>GET api/courses</summary>
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IList<CourseDto>>>> GetAll()
     {
@@ -19,6 +22,7 @@ public class CoursesController(ICourseService courseService) : ControllerBase
     }
 
     /// <summary>GET api/courses/{id}</summary>
+    [AllowAnonymous]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ApiResponse<CourseDetailDto>>> GetById(int id)
     {

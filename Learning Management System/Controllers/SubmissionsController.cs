@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using LMS.DTOs;
 using LMS.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,6 +9,7 @@ namespace LMS.Controllers;
 
 [ApiController]
 [Route("api/assignments/{assignmentId:int}/submissions")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class SubmissionsController(ISubmissionService submissionService) : ControllerBase
 {
     /// <summary>POST api/assignments/{assignmentId}/submissions</summary>

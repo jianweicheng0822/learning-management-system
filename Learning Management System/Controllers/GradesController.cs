@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using LMS.DTOs;
 using LMS.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,6 +9,7 @@ namespace LMS.Controllers;
 
 [ApiController]
 [Route("api/submissions/{submissionId:int}/grade")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class GradesController(IGradeService gradeService) : ControllerBase
 {
     /// <summary>POST api/submissions/{submissionId}/grade</summary>

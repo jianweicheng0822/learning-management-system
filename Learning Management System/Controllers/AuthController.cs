@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using LMS.DTOs;
 using LMS.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,9 +9,11 @@ namespace LMS.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class AuthController(IAuthService authService) : ControllerBase
 {
     /// <summary>POST api/auth/register</summary>
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<ActionResult<ApiResponse<AuthResponse>>> Register(RegisterRequest request)
     {
@@ -19,6 +22,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     /// <summary>POST api/auth/login</summary>
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<ActionResult<ApiResponse<AuthResponse>>> Login(LoginRequest request)
     {
