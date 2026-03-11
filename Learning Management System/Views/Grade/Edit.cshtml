@@ -1,0 +1,30 @@
+@model LMS.DTOs.GradeSubmissionRequest
+@{
+    ViewData["Title"] = "Edit Grade";
+}
+
+<h2>Edit Grade</h2>
+@if (ViewBag.AssignmentTitle != null)
+{
+    <p class="text-muted">Assignment: @ViewBag.AssignmentTitle | Student: @ViewBag.StudentName</p>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <form asp-action="Edit" asp-route-submissionId="@ViewBag.SubmissionId" method="post">
+            <div class="mb-3">
+                <label asp-for="Score" class="form-label">Score (0-100)</label>
+                <input asp-for="Score" class="form-control" type="number" min="0" max="100" step="0.01" />
+                <span asp-validation-for="Score" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Feedback" class="form-label"></label>
+                <textarea asp-for="Feedback" class="form-control" rows="5"></textarea>
+                <span asp-validation-for="Feedback" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Grade</button>
+            <a asp-controller="Submission" asp-action="Details" asp-route-id="@ViewBag.SubmissionId" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>

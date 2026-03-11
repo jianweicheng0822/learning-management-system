@@ -1,0 +1,60 @@
+@model IList<LMS.DTOs.SubmissionDto>
+@{
+    ViewData["Title"] = "My Grades";
+}
+
+<h2>My Grades</h2>
+
+<a asp-controller="Course" asp-action="Details" asp-route-id="@ViewBag.CourseId" class="btn btn-sm btn-outline-secondary mb-3">Back to Course</a>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">No graded submissions for this course.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Assignment</th>
+                <th>Submitted</th>
+                <th>Score</th>
+                <th>Feedback</th>
+                <th>Graded</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>@s.AssignmentTitle</td>
+                    <td>@s.SubmittedAt.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        @if (s.Grade != null)
+                        {
+                            <span class="badge bg-success">@s.Grade.Score / 100</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        }
+                    </td>
+                    <td>@(s.Grade?.Feedback ?? "-")</td>
+                    <td>@(s.Grade?.GradedAt.ToString("MMM dd, yyyy") ?? "-")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (Model.Any(s => s.Grade != null))
+    {
+        var gradedSubmissions = Model.Where(s => s.Grade != null).ToList();
+        var average = gradedSubmissions.Average(s => s.Grade!.Score);
+        <div class="card mt-3" style="max-width: 300px;">
+            <div class="card-body text-center">
+                <h5 class="card-title">Course Average</h5>
+                <p class="display-6">@average.ToString("F1") / 100</p>
+            </div>
+        </div>
+    }
+}
