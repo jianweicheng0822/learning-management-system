@@ -19,25 +19,12 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         db.Courses.Add(course);
         await db.SaveChangesAsync();
 
-        return await MapToDto(course.Id);
+        return await QueryCourses().FirstAsync(c => c.Id == course.Id);
     }
 
     public async Task<IList<CourseDto>> GetAllAsync()
     {
-        return await db.Courses
-            .Include(c => c.Instructor)
-            .Include(c => c.Enrollments)
-            .Select(c => new CourseDto
-            {
-                Id = c.Id,
-                Title = c.Title,
-                Description = c.Description,
-                InstructorId = c.InstructorId,
-                InstructorName = c.Instructor.FullName,
-                EnrolledCount = c.Enrollments.Count,
-                CreatedAt = c.CreatedAt
-            })
-            .ToListAsync();
+        return await QueryCourses().ToListAsync();
     }
 
     public async Task<CourseDetailDto> GetByIdAsync(int id)
@@ -79,27 +66,27 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         };
     }
 
-    public async Task<CourseDto> UpdateAsync(int id, string instructorId, UpdateCourseRequest request)
+    public async Task<CourseDto> UpdateAsync(int id, string userId, bool isAdmin, UpdateCourseRequest request)
     {
         var course = await db.Courses.FindAsync(id)
             ?? throw new KeyNotFoundException("Course not found.");
 
-        if (course.InstructorId != instructorId)
+        if (!isAdmin && course.InstructorId != userId)
             throw new UnauthorizedAccessException("You can only update your own courses.");
 
         course.Title = request.Title;
         course.Description = request.Description;
         await db.SaveChangesAsync();
 
-        return await MapToDto(id);
+        return await QueryCourses().FirstAsync(c => c.Id == id);
     }
 
-    public async Task DeleteAsync(int id, string instructorId)
+    public async Task DeleteAsync(int id, string userId, bool isAdmin)
     {
         var course = await db.Courses.FindAsync(id)
             ?? throw new KeyNotFoundException("Course not found.");
 
-        if (course.InstructorId != instructorId)
+        if (!isAdmin && course.InstructorId != userId)
             throw new UnauthorizedAccessException("You can only delete your own courses.");
 
         db.Courses.Remove(course);
@@ -136,20 +123,8 @@ public class CourseService(ApplicationDbContext db) : ICourseService
 
     public async Task<IList<CourseDto>> GetByInstructorAsync(string instructorId)
     {
-        return await db.Courses
+        return await QueryCourses()
             .Where(c => c.InstructorId == instructorId)
-            .Include(c => c.Instructor)
-            .Include(c => c.Enrollments)
-            .Select(c => new CourseDto
-            {
-                Id = c.Id,
-                Title = c.Title,
-                Description = c.Description,
-                InstructorId = c.InstructorId,
-                InstructorName = c.Instructor.FullName,
-                EnrolledCount = c.Enrollments.Count,
-                CreatedAt = c.CreatedAt
-            })
             .ToListAsync();
     }
 
@@ -157,27 +132,7 @@ public class CourseService(ApplicationDbContext db) : ICourseService
     {
         return await db.Enrollments
             .Where(e => e.StudentId == studentId)
-            .Include(e => e.Course).ThenInclude(c => c.Instructor)
-            .Include(e => e.Course).ThenInclude(c => c.Enrollments)
-            .Select(e => new CourseDto
-            {
-                Id = e.Course.Id,
-                Title = e.Course.Title,
-                Description = e.Course.Description,
-                InstructorId = e.Course.InstructorId,
-                InstructorName = e.Course.Instructor.FullName,
-                EnrolledCount = e.Course.Enrollments.Count,
-                CreatedAt = e.Course.CreatedAt
-            })
-            .ToListAsync();
-    }
-
-    private async Task<CourseDto> MapToDto(int courseId)
-    {
-        return await db.Courses
-            .Where(c => c.Id == courseId)
-            .Include(c => c.Instructor)
-            .Include(c => c.Enrollments)
+            .Select(e => e.Course)
             .Select(c => new CourseDto
             {
                 Id = c.Id,
@@ -188,6 +143,21 @@ public class CourseService(ApplicationDbContext db) : ICourseService
                 EnrolledCount = c.Enrollments.Count,
                 CreatedAt = c.CreatedAt
             })
-            .FirstAsync();
+            .ToListAsync();
+    }
+
+    private IQueryable<CourseDto> QueryCourses()
+    {
+        return db.Courses
+            .Select(c => new CourseDto
+            {
+                Id = c.Id,
+                Title = c.Title,
+                Description = c.Description,
+                InstructorId = c.InstructorId,
+                InstructorName = c.Instructor.FullName,
+                EnrolledCount = c.Enrollments.Count,
+                CreatedAt = c.CreatedAt
+            });
     }
 }

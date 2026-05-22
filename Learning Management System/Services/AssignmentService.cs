@@ -7,12 +7,12 @@ namespace LMS.Services;
 
 public class AssignmentService(ApplicationDbContext db) : IAssignmentService
 {
-    public async Task<AssignmentDto> CreateAsync(int courseId, string instructorId, CreateAssignmentRequest request)
+    public async Task<AssignmentDto> CreateAsync(int courseId, string userId, bool isAdmin, CreateAssignmentRequest request)
     {
         var course = await db.Courses.FindAsync(courseId)
             ?? throw new KeyNotFoundException("Course not found.");
 
-        if (course.InstructorId != instructorId)
+        if (!isAdmin && course.InstructorId != userId)
             throw new UnauthorizedAccessException("You can only create assignments for your own courses.");
 
         var assignment = new Assignment
@@ -26,27 +26,12 @@ public class AssignmentService(ApplicationDbContext db) : IAssignmentService
         db.Assignments.Add(assignment);
         await db.SaveChangesAsync();
 
-        return await MapToDto(assignment.Id);
+        return await QueryAssignments().FirstAsync(a => a.Id == assignment.Id);
     }
 
     public async Task<AssignmentDto> GetByIdAsync(int id)
     {
-        return await db.Assignments
-            .Where(a => a.Id == id)
-            .Include(a => a.Course)
-            .Include(a => a.Submissions)
-            .Select(a => new AssignmentDto
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Description = a.Description,
-                DueDate = a.DueDate,
-                CourseId = a.CourseId,
-                CourseName = a.Course.Title,
-                SubmissionCount = a.Submissions.Count,
-                CreatedAt = a.CreatedAt
-            })
-            .FirstOrDefaultAsync()
+        return await QueryAssignments().FirstOrDefaultAsync(a => a.Id == id)
             ?? throw new KeyNotFoundException("Assignment not found.");
     }
 
@@ -55,30 +40,17 @@ public class AssignmentService(ApplicationDbContext db) : IAssignmentService
         var courseExists = await db.Courses.AnyAsync(c => c.Id == courseId);
         if (!courseExists) throw new KeyNotFoundException("Course not found.");
 
-        return await db.Assignments
+        return await QueryAssignments()
             .Where(a => a.CourseId == courseId)
-            .Include(a => a.Course)
-            .Include(a => a.Submissions)
-            .Select(a => new AssignmentDto
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Description = a.Description,
-                DueDate = a.DueDate,
-                CourseId = a.CourseId,
-                CourseName = a.Course.Title,
-                SubmissionCount = a.Submissions.Count,
-                CreatedAt = a.CreatedAt
-            })
             .ToListAsync();
     }
 
-    public async Task<AssignmentDto> UpdateAsync(int id, string instructorId, UpdateAssignmentRequest request)
+    public async Task<AssignmentDto> UpdateAsync(int id, string userId, bool isAdmin, UpdateAssignmentRequest request)
     {
         var assignment = await db.Assignments.Include(a => a.Course).FirstOrDefaultAsync(a => a.Id == id)
             ?? throw new KeyNotFoundException("Assignment not found.");
 
-        if (assignment.Course.InstructorId != instructorId)
+        if (!isAdmin && assignment.Course.InstructorId != userId)
             throw new UnauthorizedAccessException("You can only update assignments for your own courses.");
 
         assignment.Title = request.Title;
@@ -86,27 +58,24 @@ public class AssignmentService(ApplicationDbContext db) : IAssignmentService
         assignment.DueDate = request.DueDate;
         await db.SaveChangesAsync();
 
-        return await MapToDto(id);
+        return await QueryAssignments().FirstAsync(a => a.Id == id);
     }
 
-    public async Task DeleteAsync(int id, string instructorId)
+    public async Task DeleteAsync(int id, string userId, bool isAdmin)
     {
         var assignment = await db.Assignments.Include(a => a.Course).FirstOrDefaultAsync(a => a.Id == id)
             ?? throw new KeyNotFoundException("Assignment not found.");
 
-        if (assignment.Course.InstructorId != instructorId)
+        if (!isAdmin && assignment.Course.InstructorId != userId)
             throw new UnauthorizedAccessException("You can only delete assignments for your own courses.");
 
         db.Assignments.Remove(assignment);
         await db.SaveChangesAsync();
     }
 
-    private async Task<AssignmentDto> MapToDto(int assignmentId)
+    private IQueryable<AssignmentDto> QueryAssignments()
     {
-        return await db.Assignments
-            .Where(a => a.Id == assignmentId)
-            .Include(a => a.Course)
-            .Include(a => a.Submissions)
+        return db.Assignments
             .Select(a => new AssignmentDto
             {
                 Id = a.Id,
@@ -117,7 +86,6 @@ public class AssignmentService(ApplicationDbContext db) : IAssignmentService
                 CourseName = a.Course.Title,
                 SubmissionCount = a.Submissions.Count,
                 CreatedAt = a.CreatedAt
-            })
-            .FirstAsync();
+            });
     }
 }

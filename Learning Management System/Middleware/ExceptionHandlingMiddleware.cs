@@ -1,6 +1,4 @@
 using System.Net;
-using System.Text.Json;
-using LMS.DTOs;
 
 namespace LMS.Middleware;
 
@@ -14,33 +12,35 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex);
+            HandleException(context, ex);
         }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private void HandleException(HttpContext context, Exception exception)
     {
-        var (statusCode, message) = exception switch
+        var statusCode = exception switch
         {
-            KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),
-            UnauthorizedAccessException => (HttpStatusCode.Forbidden, exception.Message),
-            InvalidOperationException => (HttpStatusCode.Conflict, exception.Message),
-            ArgumentException => (HttpStatusCode.BadRequest, exception.Message),
-            _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
+            KeyNotFoundException => (int)HttpStatusCode.NotFound,
+            UnauthorizedAccessException => (int)HttpStatusCode.Forbidden,
+            InvalidOperationException => (int)HttpStatusCode.Conflict,
+            ArgumentException => (int)HttpStatusCode.BadRequest,
+            _ => (int)HttpStatusCode.InternalServerError
         };
 
-        if (statusCode == HttpStatusCode.InternalServerError)
+        if (statusCode == (int)HttpStatusCode.InternalServerError)
             logger.LogError(exception, "Unhandled exception");
+        else
+            logger.LogWarning(exception, "Handled exception ({StatusCode})", statusCode);
 
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)statusCode;
+        context.Response.StatusCode = statusCode;
 
-        var response = ApiResponse.Fail(message);
-        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        // Store error details for the error view
+        context.Items["ErrorMessage"] = exception.Message;
+        context.Items["ErrorStatusCode"] = statusCode;
 
-        await context.Response.WriteAsync(json);
+        // Re-throw to let the developer exception page or UseStatusCodePages handle it,
+        // or redirect to the error action
+        var path = $"/Home/Error?statusCode={statusCode}";
+        context.Response.Redirect(path);
     }
 }

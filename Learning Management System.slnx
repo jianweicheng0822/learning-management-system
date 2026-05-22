@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="Learning Management System/Learning Management System.csproj" />
+  <Project Path="LMS.Tests/LMS.Tests.csproj" />
 </Solution>

@@ -67,7 +67,7 @@ public class CourseController(ICourseService courseService) : Controller
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await courseService.UpdateAsync(id, userId, request);
+        await courseService.UpdateAsync(id, userId, User.IsInRole("Admin"), request);
         TempData["Success"] = "Course updated successfully.";
         return RedirectToAction("Details", new { id });
     }
@@ -86,7 +86,7 @@ public class CourseController(ICourseService courseService) : Controller
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await courseService.DeleteAsync(id, userId);
+        await courseService.DeleteAsync(id, userId, User.IsInRole("Admin"));
         TempData["Success"] = "Course deleted successfully.";
         return RedirectToAction("Index");
     }

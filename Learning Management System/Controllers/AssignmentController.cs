@@ -43,7 +43,7 @@ public class AssignmentController(IAssignmentService assignmentService, ICourseS
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var assignment = await assignmentService.CreateAsync(courseId, userId, request);
+        var assignment = await assignmentService.CreateAsync(courseId, userId, User.IsInRole("Admin"), request);
         TempData["Success"] = "Assignment created successfully.";
         return RedirectToAction("Details", new { id = assignment.Id });
     }
@@ -76,7 +76,7 @@ public class AssignmentController(IAssignmentService assignmentService, ICourseS
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await assignmentService.UpdateAsync(id, userId, request);
+        await assignmentService.UpdateAsync(id, userId, User.IsInRole("Admin"), request);
         TempData["Success"] = "Assignment updated successfully.";
         return RedirectToAction("Details", new { id });
     }
@@ -96,7 +96,7 @@ public class AssignmentController(IAssignmentService assignmentService, ICourseS
     {
         var assignment = await assignmentService.GetByIdAsync(id);
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await assignmentService.DeleteAsync(id, userId);
+        await assignmentService.DeleteAsync(id, userId, User.IsInRole("Admin"));
         TempData["Success"] = "Assignment deleted successfully.";
         return RedirectToAction("Index", new { courseId = assignment.CourseId });
     }

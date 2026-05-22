@@ -17,11 +17,22 @@ public class HomeController : Controller
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
+    public IActionResult Error(int? statusCode = null)
     {
-        return View(new ErrorViewModel
+        var model = new ErrorViewModel
         {
-            RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
-        });
+            RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier,
+            StatusCode = statusCode ?? 500,
+            Message = statusCode switch
+            {
+                400 => "The request was invalid.",
+                403 => "You do not have permission to perform this action.",
+                404 => "The requested resource was not found.",
+                409 => "The request conflicts with the current state.",
+                _ => "An unexpected error occurred."
+            }
+        };
+
+        return View(model);
     }
 }

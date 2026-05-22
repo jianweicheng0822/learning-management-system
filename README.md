@@ -1,64 +1,53 @@
 # Learning Management System (LMS)
 
-A full-stack Learning Management System built with ASP.NET Core MVC, Razor Views, and MySQL. Features cookie-based authentication for the web UI and JWT authentication for the REST API.
+A full-stack Learning Management System built with ASP.NET Core 9 MVC, Razor Views, and MySQL. Supports three user roles (Admin, Instructor, Student) with cookie-based authentication.
+
+## Live Demo
+
+**URL:** http://18.234.45.126
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@lms.com | Admin123! |
+| Instructor | instructor@lms.com | Teach123! |
+| Student | student@lms.com | Learn123! |
 
 ## Tech Stack
 
-- **Framework:** ASP.NET Core MVC (.NET 10) with Razor Views
-- **Database:** MySQL with Entity Framework Core (Pomelo provider)
-- **Authentication:** Cookie-based (MVC) + JWT Bearer (API)
-- **Authorization:** ASP.NET Identity with role-based access (Admin, Instructor, Student)
+- **Framework:** ASP.NET Core 9 MVC with Razor Views
+- **Database:** MySQL 8.0 with Entity Framework Core (Pomelo provider)
+- **Authentication:** Cookie-based with ASP.NET Identity
+- **Authorization:** Role-based access control (Admin, Instructor, Student)
 - **Frontend:** Bootstrap 5, Razor Tag Helpers
-- **API Documentation:** Swagger / OpenAPI
-- **Deployment:** Linux (Ubuntu) with nginx reverse proxy, HTTPS via Let's Encrypt
+- **Deployment:** Docker + Docker Compose on AWS EC2
+- **CI/CD:** GitHub Actions (build, push to Docker Hub, deploy to EC2)
 
 ## Features
 
-### Web Interface (MVC + Razor Views)
-- **Home** — Landing page with role-based dashboard links
-- **Account** — Registration, login/logout, profile management with cookie authentication
 - **Courses** — Browse, create, edit, delete courses; enroll/unenroll students
 - **Assignments** — CRUD operations within course context, due date tracking
-- **Submissions** — Students submit work; instructors review all submissions
-- **Grades** — Instructors grade submissions (0–100); students view grades with course averages
-
-### REST API (JWT Authentication)
-- Full CRUD API endpoints for all resources
-- Swagger UI for interactive API testing
-- JWT Bearer token authentication
+- **Submissions** — Students submit work (text); instructors review submissions
+- **Grades** — Instructors grade submissions (0–100 with feedback); students view grades
+- **Accounts** — Registration, login/logout, profile management
+- **Admin** — Full access to all resources across the system
 
 ## Project Structure
 
 ```
 Learning Management System/
-├── Controllers/           # MVC controllers (web) + API controllers
-│   ├── HomeController.cs
-│   ├── AccountController.cs
-│   ├── CourseController.cs
-│   ├── AssignmentController.cs
-│   ├── SubmissionController.cs
-│   ├── GradeController.cs
-│   ├── AuthController.cs          # API
-│   ├── CoursesController.cs       # API
-│   ├── AssignmentsController.cs   # API
-│   ├── SubmissionsController.cs   # API
-│   └── GradesController.cs        # API
-├── Views/
-│   ├── Shared/            # Layout, navigation, error page
-│   ├── Home/              # Landing page, privacy
-│   ├── Account/           # Login, register, profile
-│   ├── Course/            # CRUD views, enrollment
-│   ├── Assignment/        # CRUD views
-│   ├── Submission/        # Submit, review, my submissions
-│   └── Grade/             # Grade, edit grade, my grades
-├── ViewModels/            # MVC view models with validation
+├── Controllers/           # MVC controllers
+├── Views/                 # Razor views (Home, Account, Course, Assignment, Submission, Grade)
+├── ViewModels/            # View models with validation
 ├── Models/                # EF Core entity models
-├── DTOs/                  # API request/response objects
 ├── Services/              # Business logic (interfaces + implementations)
-├── Data/                  # DbContext configuration
+├── Data/                  # DbContext, migrations, seed data
 ├── Middleware/             # Global exception handling
-├── wwwroot/css/           # Static assets
-└── Deployment/            # nginx, systemd, deploy script
+└── wwwroot/               # Static assets (CSS, JS)
+
+Dockerfile                 # Multi-stage build (SDK → runtime)
+docker-compose.yml         # App + MySQL containers
+.github/workflows/         # CI/CD pipeline
+LMS.Tests/                 # Unit tests
 ```
 
 ## Database Schema
@@ -79,45 +68,50 @@ Submission
  └── Grade (one-to-one)
 ```
 
-## Getting Started
+## Running Locally
 
-### Prerequisites
-- .NET 10 SDK
-- MySQL Server
+### With Docker (recommended)
 
-### Setup
+```bash
+git clone https://github.com/jianweicheng0822/learning-management-system.git
+cd learning-management-system
+cp .env.example .env       # edit passwords if you want
+docker compose up --build
+```
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/jianweicheng0822/learning-management-system.git
-   cd learning-management-system
-   ```
+Visit http://localhost and log in with any demo account above.
 
-2. **Configure the database connection** in `appsettings.json`:
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "Server=localhost;Port=3306;Database=LmsDb;User=root;Password=YOUR_PASSWORD;"
-     }
-   }
-   ```
+### Without Docker
 
-3. **Run migrations:**
-   ```bash
-   cd "Learning Management System"
-   dotnet ef database update
-   ```
+Prerequisites: .NET 9 SDK, MySQL Server
 
-4. **Run the application:**
-   ```bash
-   dotnet run
-   ```
+```bash
+cd "Learning Management System"
+# Set your connection string in appsettings.json or user secrets
+dotnet run
+```
 
-5. **Access the app:**
-   - Web UI: `https://localhost:5001`
-   - Swagger API: `https://localhost:5001/swagger`
+The app auto-runs migrations and seeds demo data on startup when `SEED_DEMO_DATA=true`.
 
-## MVC Routes
+## Deployment
+
+The app deploys to AWS EC2 via GitHub Actions. On every push to `main`:
+
+1. GitHub Actions builds a Docker image and pushes it to Docker Hub
+2. SSHs into EC2 and pulls the new image
+3. Restarts the app container (MySQL data persists across deploys)
+
+### Required GitHub Secrets
+
+| Secret | Description |
+|--------|-------------|
+| `DOCKERHUB_USERNAME` | Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token |
+| `EC2_HOST` | EC2 public IP address |
+| `EC2_USER` | SSH user (e.g. `ubuntu`) |
+| `EC2_SSH_KEY` | PEM private key contents |
+
+## Routes
 
 | Route | Description |
 |-------|-------------|
@@ -127,108 +121,10 @@ Submission
 | `/Account/Profile` | User profile |
 | `/Course` | Browse all courses |
 | `/Course/Details/{id}` | Course details with assignments |
-| `/Course/Create` | Create course (Instructor) |
+| `/Course/Create` | Create course (Instructor/Admin) |
 | `/Course/MyCourses` | Instructor's courses |
 | `/Course/Enrolled` | Student's enrolled courses |
 | `/Assignment/Details/{id}` | Assignment details |
 | `/Submission/Create?assignmentId={id}` | Submit assignment (Student) |
 | `/Submission/MySubmissions` | Student's submissions |
 | `/Grade/MyGrades?courseId={id}` | Student's grades for a course |
-
-## API Endpoints
-
-### Auth
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | /api/auth/register | Public | Register user |
-| POST | /api/auth/login | Public | Login, get JWT |
-| GET | /api/auth/profile | Bearer | Get own profile |
-| PUT | /api/auth/profile | Bearer | Update profile |
-
-### Courses
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /api/courses | Public | List all courses |
-| GET | /api/courses/{id} | Public | Course details |
-| POST | /api/courses | Instructor | Create course |
-| PUT | /api/courses/{id} | Instructor | Update course |
-| DELETE | /api/courses/{id} | Instructor | Delete course |
-| POST | /api/courses/{id}/enroll | Student | Enroll in course |
-| DELETE | /api/courses/{id}/enroll | Student | Unenroll |
-| GET | /api/courses/my-courses | Instructor | My taught courses |
-| GET | /api/courses/enrolled | Student | My enrolled courses |
-
-### Assignments
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /api/courses/{courseId}/assignments | Bearer | List assignments |
-| GET | /api/courses/{courseId}/assignments/{id} | Bearer | Assignment details |
-| POST | /api/courses/{courseId}/assignments | Instructor | Create assignment |
-| PUT | /api/courses/{courseId}/assignments/{id} | Instructor | Update assignment |
-| DELETE | /api/courses/{courseId}/assignments/{id} | Instructor | Delete assignment |
-
-### Submissions
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | /api/assignments/{assignmentId}/submissions | Student | Submit assignment |
-| GET | /api/assignments/{assignmentId}/submissions | Instructor | View submissions |
-| GET | /api/assignments/{assignmentId}/submissions/{id} | Bearer | View submission |
-| GET | /api/submissions/mine | Student | My submissions |
-
-### Grades
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | /api/submissions/{submissionId}/grade | Instructor | Grade submission |
-| PUT | /api/submissions/{submissionId}/grade | Instructor | Update grade |
-| GET | /api/courses/{courseId}/grades | Student | My grades in course |
-
-## Deployment (Linux / Ubuntu)
-
-### Quick Deploy
-
-```bash
-# Run the automated deployment script
-chmod +x Deployment/deploy.sh
-sudo ./Deployment/deploy.sh
-```
-
-### Manual Setup
-
-1. **Install prerequisites:**
-   ```bash
-   sudo apt-get update
-   sudo apt-get install -y dotnet-sdk-10.0 mysql-server nginx certbot python3-certbot-nginx
-   sudo mysql_secure_installation
-   ```
-
-2. **Publish the application:**
-   ```bash
-   dotnet publish "Learning Management System" -c Release -o /var/www/lms
-   sudo chown -R www-data:www-data /var/www/lms
-   ```
-
-3. **Configure systemd service:**
-   ```bash
-   sudo cp Deployment/lms.service /etc/systemd/system/lms.service
-   sudo systemctl daemon-reload
-   sudo systemctl enable lms
-   sudo systemctl start lms
-   ```
-
-4. **Configure nginx with HTTPS:**
-   ```bash
-   # Update domain in Deployment/nginx/lms.conf
-   sudo cp Deployment/nginx/lms.conf /etc/nginx/sites-available/lms
-   sudo ln -s /etc/nginx/sites-available/lms /etc/nginx/sites-enabled/
-   sudo nginx -t
-   sudo systemctl reload nginx
-
-   # Get SSL certificate
-   sudo certbot --nginx -d your-domain.com
-   ```
-
-5. **Verify:**
-   ```bash
-   sudo systemctl status lms
-   curl https://your-domain.com
-   ```

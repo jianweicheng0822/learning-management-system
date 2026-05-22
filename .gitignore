@@ -18,3 +18,7 @@ Thumbs.db
 *.idea/
 *.swp
 *~
+
+## Deployment secrets
+.env
+*.pem

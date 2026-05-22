@@ -7,7 +7,7 @@ namespace LMS.Services;
 
 public class GradeService(ApplicationDbContext db) : IGradeService
 {
-    public async Task<GradeDto> GradeSubmissionAsync(int submissionId, string instructorId, GradeSubmissionRequest request)
+    public async Task<GradeDto> GradeSubmissionAsync(int submissionId, string userId, bool isAdmin, GradeSubmissionRequest request)
     {
         var submission = await db.Submissions
             .Include(s => s.Assignment).ThenInclude(a => a.Course)
@@ -15,7 +15,7 @@ public class GradeService(ApplicationDbContext db) : IGradeService
             .FirstOrDefaultAsync(s => s.Id == submissionId)
             ?? throw new KeyNotFoundException("Submission not found.");
 
-        if (submission.Assignment.Course.InstructorId != instructorId)
+        if (!isAdmin && submission.Assignment.Course.InstructorId != userId)
             throw new UnauthorizedAccessException("You can only grade submissions for your own courses.");
 
         if (submission.Grade is not null)
@@ -26,7 +26,7 @@ public class GradeService(ApplicationDbContext db) : IGradeService
             SubmissionId = submissionId,
             Score = request.Score,
             Feedback = request.Feedback,
-            GradedById = instructorId
+            GradedById = userId
         };
 
         db.Grades.Add(grade);
@@ -35,14 +35,14 @@ public class GradeService(ApplicationDbContext db) : IGradeService
         return await MapToDto(grade.Id);
     }
 
-    public async Task<GradeDto> UpdateGradeAsync(int submissionId, string instructorId, GradeSubmissionRequest request)
+    public async Task<GradeDto> UpdateGradeAsync(int submissionId, string userId, bool isAdmin, GradeSubmissionRequest request)
     {
         var grade = await db.Grades
             .Include(g => g.Submission).ThenInclude(s => s.Assignment).ThenInclude(a => a.Course)
             .FirstOrDefaultAsync(g => g.SubmissionId == submissionId)
             ?? throw new KeyNotFoundException("Grade not found for this submission.");
 
-        if (grade.Submission.Assignment.Course.InstructorId != instructorId)
+        if (!isAdmin && grade.Submission.Assignment.Course.InstructorId != userId)
             throw new UnauthorizedAccessException("You can only update grades for your own courses.");
 
         grade.Score = request.Score;

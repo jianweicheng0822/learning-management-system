@@ -1,12 +1,17 @@
 @model ErrorViewModel
 @{
-    ViewData["Title"] = "Error";
+    ViewData["Title"] = "Error " + Model?.StatusCode;
 }
 
-<h1 class="text-danger">Error</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="text-center mt-5">
+    <h1 class="text-danger">@Model?.StatusCode</h1>
+    <h2>@Model?.Message</h2>
+    <p class="mt-3">
+        <a href="/" class="btn btn-primary">Return to Home</a>
+    </p>
 
-@if (Model?.ShowRequestId == true)
-{
-    <p><strong>Request ID:</strong> <code>@Model.RequestId</code></p>
-}
+    @if (Model?.ShowRequestId == true)
+    {
+        <p class="text-muted mt-4"><small>Request ID: @Model.RequestId</small></p>
+    }
+</div>

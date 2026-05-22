@@ -33,7 +33,7 @@ public class GradeController(
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await gradeService.GradeSubmissionAsync(submissionId, userId, request);
+        await gradeService.GradeSubmissionAsync(submissionId, userId, User.IsInRole("Admin"), request);
         TempData["Success"] = "Submission graded successfully.";
         return RedirectToAction("Details", "Submission", new { id = submissionId });
     }
@@ -67,7 +67,7 @@ public class GradeController(
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await gradeService.UpdateGradeAsync(submissionId, userId, request);
+        await gradeService.UpdateGradeAsync(submissionId, userId, User.IsInRole("Admin"), request);
         TempData["Success"] = "Grade updated successfully.";
         return RedirectToAction("Details", "Submission", new { id = submissionId });
     }
