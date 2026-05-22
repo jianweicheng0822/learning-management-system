@@ -36,8 +36,15 @@ public class GradeController(
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await gradeService.GradeSubmissionAsync(submissionId, userId, User.IsInRole("Admin"), request);
-        TempData["Success"] = "Submission graded successfully.";
+        try
+        {
+            await gradeService.GradeSubmissionAsync(submissionId, userId, User.IsInRole("Admin"), request);
+            TempData["Success"] = "Submission graded successfully.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
         return RedirectToAction("Details", "Submission", new { id = submissionId });
     }
 

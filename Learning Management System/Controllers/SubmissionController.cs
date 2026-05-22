@@ -34,9 +34,17 @@ public class SubmissionController(
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var submission = await submissionService.SubmitAsync(assignmentId, userId, request);
-        TempData["Success"] = "Assignment submitted successfully.";
-        return RedirectToAction("Details", new { id = submission.Id });
+        try
+        {
+            var submission = await submissionService.SubmitAsync(assignmentId, userId, request);
+            TempData["Success"] = "Assignment submitted successfully.";
+            return RedirectToAction("Details", new { id = submission.Id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction("Details", "Assignment", new { id = assignmentId });
+        }
     }
 
     // Instructor/Admin: view all submissions for an assignment (for grading)

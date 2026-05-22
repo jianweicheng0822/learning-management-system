@@ -118,8 +118,15 @@ public class CourseController(ICourseService courseService) : Controller
     public async Task<IActionResult> Enroll(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await courseService.EnrollStudentAsync(id, userId);
-        TempData["Success"] = "Enrolled successfully.";
+        try
+        {
+            await courseService.EnrollStudentAsync(id, userId);
+            TempData["Success"] = "Enrolled successfully.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
         return RedirectToAction("Details", new { id });
     }
 
