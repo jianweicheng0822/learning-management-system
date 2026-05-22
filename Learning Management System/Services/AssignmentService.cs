@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
+// Handles assignment CRUD with ownership checks against the parent course's instructor
 public class AssignmentService(ApplicationDbContext db) : IAssignmentService
 {
+    // Verifies the caller owns the course (or is admin) before creating the assignment
     public async Task<AssignmentDto> CreateAsync(int courseId, string userId, bool isAdmin, CreateAssignmentRequest request)
     {
         var course = await db.Courses.FindAsync(courseId)
@@ -45,6 +47,7 @@ public class AssignmentService(ApplicationDbContext db) : IAssignmentService
             .ToListAsync();
     }
 
+    // Includes the parent course to check instructor ownership before allowing the update
     public async Task<AssignmentDto> UpdateAsync(int id, string userId, bool isAdmin, UpdateAssignmentRequest request)
     {
         var assignment = await db.Assignments.Include(a => a.Course).FirstOrDefaultAsync(a => a.Id == id)
@@ -73,6 +76,7 @@ public class AssignmentService(ApplicationDbContext db) : IAssignmentService
         await db.SaveChangesAsync();
     }
 
+    // Reusable projection query — keeps AssignmentDto mapping in one place
     private IQueryable<AssignmentDto> QueryAssignments()
     {
         return db.Assignments

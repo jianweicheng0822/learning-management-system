@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
+// Manages student submissions — enforces enrollment, one submission per student per assignment
 public class SubmissionService(ApplicationDbContext db) : ISubmissionService
 {
     public async Task<SubmissionDto> SubmitAsync(int assignmentId, string studentId, CreateSubmissionRequest request)

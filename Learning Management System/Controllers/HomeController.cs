@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
+// Serves the landing page, privacy page, and generic error page
 public class HomeController : Controller
 {
     public IActionResult Index()
@@ -16,6 +17,7 @@ public class HomeController : Controller
         return View();
     }
 
+    // Maps HTTP status codes to user-friendly error messages
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error(int? statusCode = null)
     {

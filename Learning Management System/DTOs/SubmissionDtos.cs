@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.DTOs;
 
+// Request/response DTOs for submission operations
+
+// Input for submitting work — at least one of TextContent or FilePath must be provided
 public record CreateSubmissionRequest
 {
     [MaxLength(5000)]
@@ -11,6 +14,7 @@ public record CreateSubmissionRequest
     public string? FilePath { get; init; }
 }
 
+// Read-only view of a submission, including the optional attached grade
 public record SubmissionDto
 {
     public int Id { get; init; }

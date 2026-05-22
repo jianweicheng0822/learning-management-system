@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.Models;
 
+// A task assigned to students within a course, with a due date and collected submissions
 public class Assignment
 {
     public int Id { get; set; }

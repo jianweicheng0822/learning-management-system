@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
+// Handles course lifecycle: create, update, delete, and student enrollment/unenrollment
 public class CourseService(ApplicationDbContext db) : ICourseService
 {
     public async Task<CourseDto> CreateAsync(string instructorId, CreateCourseRequest request)
@@ -27,6 +28,7 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         return await QueryCourses().ToListAsync();
     }
 
+    // Eagerly loads instructor, enrolled students, and assignments with submission counts
     public async Task<CourseDetailDto> GetByIdAsync(int id)
     {
         var course = await db.Courses
@@ -66,6 +68,7 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         };
     }
 
+    // Ownership check: only the course instructor or an admin can update
     public async Task<CourseDto> UpdateAsync(int id, string userId, bool isAdmin, UpdateCourseRequest request)
     {
         var course = await db.Courses.FindAsync(id)
@@ -93,6 +96,7 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         await db.SaveChangesAsync();
     }
 
+    // Prevents duplicate enrollments by checking before inserting
     public async Task EnrollStudentAsync(int courseId, string studentId)
     {
         var courseExists = await db.Courses.AnyAsync(c => c.Id == courseId);
@@ -146,6 +150,7 @@ public class CourseService(ApplicationDbContext db) : ICourseService
             .ToListAsync();
     }
 
+    // Reusable projection query — keeps CourseDto mapping in one place
     private IQueryable<CourseDto> QueryCourses()
     {
         return db.Courses

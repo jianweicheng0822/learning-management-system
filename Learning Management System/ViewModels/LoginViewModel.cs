@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.ViewModels;
 
+// Form data for the login page, with optional return URL for post-login redirect
 public class LoginViewModel
 {
     [Required, EmailAddress]

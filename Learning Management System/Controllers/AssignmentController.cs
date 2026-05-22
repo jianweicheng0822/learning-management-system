@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
+// Assignment browsing (all users) and CRUD (Instructor/Admin only)
 public class AssignmentController(IAssignmentService assignmentService, ICourseService courseService) : Controller
 {
+    // List all assignments for a course
     public async Task<IActionResult> Index(int courseId)
     {
         var assignments = await assignmentService.GetByCourseAsync(courseId);

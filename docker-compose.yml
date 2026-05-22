@@ -1,4 +1,8 @@
+# Docker Compose config for local dev or single-server deployment
+# All secrets come from a .env file (not committed to source control)
+
 services:
+  # MySQL database — data persisted in a named volume
   lms-db:
     image: mysql:8.0
     restart: unless-stopped
@@ -9,12 +13,14 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
+    # Health check ensures the app container waits until MySQL is ready
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ASP.NET Core LMS application
   lms-app:
     image: ${DOCKER_IMAGE:-lms-app:latest}
     build:
@@ -24,8 +30,10 @@ services:
     ports:
       - "80:80"
     environment:
+      # Connection string references the lms-db service by hostname
       ConnectionStrings__DefaultConnection: "Server=lms-db;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};"
       SEED_DEMO_DATA: "true"
+    # Wait for MySQL to pass its health check before starting
     depends_on:
       lms-db:
         condition: service_healthy

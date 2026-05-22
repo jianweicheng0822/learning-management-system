@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.Models;
 
+// A student's submitted work for an assignment, containing text and/or a file path
 public class Submission
 {
     public int Id { get; set; }

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.Models;
 
+// Represents a course created by an instructor, with enrolled students and assignments
 public class Course
 {
     public int Id { get; set; }

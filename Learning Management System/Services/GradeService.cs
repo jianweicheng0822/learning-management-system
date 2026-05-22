@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
+// Handles grading and grade updates — verifies instructor ownership of the parent course
 public class GradeService(ApplicationDbContext db) : IGradeService
 {
     public async Task<GradeDto> GradeSubmissionAsync(int submissionId, string userId, bool isAdmin, GradeSubmissionRequest request)

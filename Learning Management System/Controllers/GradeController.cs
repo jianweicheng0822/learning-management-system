@@ -6,10 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
+// Grading actions for Instructor/Admin and grade viewing for Students
 public class GradeController(
     IGradeService gradeService,
     ISubmissionService submissionService) : Controller
 {
+    // Show the grading form for a submission
     [Authorize(Roles = "Instructor,Admin")]
     [HttpGet]
     public async Task<IActionResult> Grade(int submissionId)
@@ -21,6 +23,7 @@ public class GradeController(
         return View(new GradeSubmissionRequest());
     }
 
+    // Submit a new grade for a submission
     [Authorize(Roles = "Instructor,Admin")]
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -38,6 +41,7 @@ public class GradeController(
         return RedirectToAction("Details", "Submission", new { id = submissionId });
     }
 
+    // Show the edit form pre-filled with the existing grade
     [Authorize(Roles = "Instructor,Admin")]
     [HttpGet]
     public async Task<IActionResult> Edit(int submissionId)
@@ -72,6 +76,7 @@ public class GradeController(
         return RedirectToAction("Details", "Submission", new { id = submissionId });
     }
 
+    // Student-only: view grades for all submissions in a specific course
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> MyGrades(int courseId)
     {

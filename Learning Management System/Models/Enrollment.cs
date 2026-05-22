@@ -1,5 +1,6 @@
 namespace LMS.Models;
 
+// Join table linking a student to a course they are enrolled in
 public class Enrollment
 {
     public int Id { get; set; }

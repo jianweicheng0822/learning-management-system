@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.DTOs;
 
+// Request/response DTOs for assignment operations
+
+// Input for creating a new assignment under a course
 public record CreateAssignmentRequest
 {
     [Required, MaxLength(200)]
@@ -14,6 +17,7 @@ public record CreateAssignmentRequest
     public DateTime DueDate { get; init; }
 }
 
+// Input for updating an existing assignment
 public record UpdateAssignmentRequest
 {
     [Required, MaxLength(200)]
@@ -26,6 +30,7 @@ public record UpdateAssignmentRequest
     public DateTime DueDate { get; init; }
 }
 
+// Read-only view of an assignment with its parent course name and submission count
 public record AssignmentDto
 {
     public int Id { get; init; }

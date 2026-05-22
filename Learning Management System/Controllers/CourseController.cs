@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
+// Course browsing, CRUD (Instructor/Admin), and enrollment actions (Student)
 public class CourseController(ICourseService courseService) : Controller
 {
+    // List all courses — accessible to everyone
     public async Task<IActionResult> Index()
     {
         var courses = await courseService.GetAllAsync();
@@ -91,6 +93,7 @@ public class CourseController(ICourseService courseService) : Controller
         return RedirectToAction("Index");
     }
 
+    // Instructor-only: list courses taught by the current user
     [Authorize(Roles = "Instructor")]
     public async Task<IActionResult> MyCourses()
     {
@@ -99,6 +102,7 @@ public class CourseController(ICourseService courseService) : Controller
         return View(courses);
     }
 
+    // Student-only: list courses the current student is enrolled in
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> Enrolled()
     {
@@ -107,6 +111,7 @@ public class CourseController(ICourseService courseService) : Controller
         return View(courses);
     }
 
+    // Student-only: enroll in a course
     [Authorize(Roles = "Student")]
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -118,6 +123,7 @@ public class CourseController(ICourseService courseService) : Controller
         return RedirectToAction("Details", new { id });
     }
 
+    // Student-only: drop a course
     [Authorize(Roles = "Student")]
     [HttpPost]
     [ValidateAntiForgeryToken]

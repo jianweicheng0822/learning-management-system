@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.DTOs;
 
+// Request/response DTOs for grading operations
+
+// Input for grading or updating a grade on a submission (score 0-100)
 public record GradeSubmissionRequest
 {
     [Required, Range(0, 100)]
@@ -11,6 +14,7 @@ public record GradeSubmissionRequest
     public string? Feedback { get; init; }
 }
 
+// Read-only view of a grade with the grader's name
 public record GradeDto
 {
     public int Id { get; init; }

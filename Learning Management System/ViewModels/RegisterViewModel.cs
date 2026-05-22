@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.ViewModels;
 
+// Form data for new user registration — includes role selection (Student or Instructor)
 public class RegisterViewModel
 {
     [Required, MaxLength(100)]

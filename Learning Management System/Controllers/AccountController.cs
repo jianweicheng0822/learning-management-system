@@ -9,10 +9,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
+// Handles user authentication (login/register/logout) and profile management
 public class AccountController(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager) : Controller
 {
+    // Show login form; redirects to home if already authenticated
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
@@ -22,6 +24,7 @@ public class AccountController(
         return View(new LoginViewModel { ReturnUrl = returnUrl });
     }
 
+    // Validate credentials and sign in; supports return URL redirect
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
@@ -58,6 +61,7 @@ public class AccountController(
         return View(new RegisterViewModel());
     }
 
+    // Create a new user account, assign role (Student or Instructor), and auto sign-in
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Register(RegisterViewModel model)
@@ -102,6 +106,7 @@ public class AccountController(
         return RedirectToAction("Index", "Home");
     }
 
+    // Display the current user's profile details and roles
     [Authorize]
     public async Task<IActionResult> Profile()
     {
@@ -139,6 +144,7 @@ public class AccountController(
         return View(model);
     }
 
+    // Update the user's display name
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]

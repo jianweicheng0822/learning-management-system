@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
+// Submission creation (Student), listing (Instructor/Admin), and detail viewing
 public class SubmissionController(
     ISubmissionService submissionService,
     IAssignmentService assignmentService) : Controller
@@ -38,6 +39,7 @@ public class SubmissionController(
         return RedirectToAction("Details", new { id = submission.Id });
     }
 
+    // Instructor/Admin: view all submissions for an assignment (for grading)
     [Authorize(Roles = "Instructor,Admin")]
     public async Task<IActionResult> Index(int assignmentId)
     {
@@ -56,6 +58,7 @@ public class SubmissionController(
         return View(submission);
     }
 
+    // Student-only: view all of the current student's submissions
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> MySubmissions()
     {

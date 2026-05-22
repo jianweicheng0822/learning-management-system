@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.ViewModels;
 
+// Used for both displaying and editing a user's profile (name, email, roles)
 public class ProfileViewModel
 {
     public string Id { get; set; } = string.Empty;

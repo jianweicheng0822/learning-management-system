@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace LMS.Models;
 
+// An instructor's score and feedback for a single submission
 public class Grade
 {
     public int Id { get; set; }

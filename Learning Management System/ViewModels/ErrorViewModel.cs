@@ -1,5 +1,6 @@
 namespace LMS.ViewModels;
 
+// Passed to the error view to display status code, message, and request trace ID
 public class ErrorViewModel
 {
     public string? RequestId { get; set; }
