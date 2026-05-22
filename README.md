@@ -1,6 +1,20 @@
 # Learning Management System (LMS)
 
-A full-stack Learning Management System built with ASP.NET Core 9 MVC, Razor Views, and MySQL. Supports three user roles (Admin, Instructor, Student) with cookie-based authentication.
+A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Entity Framework Core**, and **MySQL**. Supports three user roles — Admin, Instructor, and Student — each with dedicated dashboards and role-based access control.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | ASP.NET Core 9 MVC, C# |
+| ORM | Entity Framework Core (Pomelo MySQL provider) |
+| Database | MySQL 8.0 |
+| Authentication | ASP.NET Identity, cookie-based sessions |
+| Authorization | Role-based (Admin, Instructor, Student) |
+| Frontend | Razor Views, Bootstrap 5 |
+| Containerization | Docker, Docker Compose |
+| CI/CD | GitHub Actions |
+| Cloud | AWS EC2 |
 
 ## Live Demo
 
@@ -11,6 +25,17 @@ A full-stack Learning Management System built with ASP.NET Core 9 MVC, Razor Vie
 | Admin | admin@lms.com | Admin123! |
 | Instructor | instructor@lms.com | Teach123! |
 | Student | student@lms.com | Learn123! |
+
+## Features
+
+- **Role-based access control** — Three distinct roles with different permissions and views
+- **Course management** — Instructors create and manage courses; students browse and enroll
+- **Assignments** — Instructors create assignments with due dates; students submit work
+- **Grading** — Instructors score submissions (0–100) with written feedback
+- **Duplicate action handling** — Friendly warnings for duplicate submissions, enrollments, and grades instead of generic error pages
+- **Auto-seeded demo data** — Pre-loaded courses, assignments, and users for immediate testing
+- **Dockerized deployment** — One-command setup with Docker Compose
+- **CI/CD pipeline** — Automatic build, push, and deploy on every push to `main`
 
 ## Screenshots
 
@@ -26,34 +51,15 @@ A full-stack Learning Management System built with ASP.NET Core 9 MVC, Razor Vie
 | Grading | ![Grading](docs/screenshots/grade.png) |
 | My Grades | ![My Grades](docs/screenshots/view%20grade.png) |
 
-## Tech Stack
-
-- **Framework:** ASP.NET Core 9 MVC with Razor Views
-- **Database:** MySQL 8.0 with Entity Framework Core (Pomelo provider)
-- **Authentication:** Cookie-based with ASP.NET Identity
-- **Authorization:** Role-based access control (Admin, Instructor, Student)
-- **Frontend:** Bootstrap 5, Razor Tag Helpers
-- **Deployment:** Docker + Docker Compose on AWS EC2
-- **CI/CD:** GitHub Actions (build, push to Docker Hub, deploy to EC2)
-
-## Features
-
-- **Courses** — Browse, create, edit, delete courses; enroll/unenroll students
-- **Assignments** — CRUD operations within course context, due date tracking
-- **Submissions** — Students submit work (text); instructors review submissions
-- **Grades** — Instructors grade submissions (0–100 with feedback); students view grades
-- **Accounts** — Registration, login/logout, profile management
-- **Admin** — Full access to all resources across the system
-
-## Project Structure
+## Architecture
 
 ```
 Learning Management System/
-├── Controllers/           # MVC controllers
-├── Views/                 # Razor views (Home, Account, Course, Assignment, Submission, Grade)
-├── ViewModels/            # View models with validation
+├── Controllers/           # MVC controllers (Course, Assignment, Submission, Grade, Account)
 ├── Models/                # EF Core entity models
-├── Services/              # Business logic (interfaces + implementations)
+├── Services/              # Business logic layer (interfaces + implementations)
+├── DTOs/                  # Data transfer objects with validation
+├── Views/                 # Razor views organized by controller
 ├── Data/                  # DbContext, migrations, seed data
 ├── Middleware/             # Global exception handling
 └── wwwroot/               # Static assets (CSS, JS)
@@ -64,7 +70,7 @@ docker-compose.yml         # App + MySQL containers
 LMS.Tests/                 # Unit tests
 ```
 
-## Database Schema
+### Database Schema
 
 ```
 User (ASP.NET Identity)
@@ -82,7 +88,7 @@ Submission
  └── Grade (one-to-one)
 ```
 
-## Running Locally
+## Getting Started
 
 ### With Docker (recommended)
 
@@ -125,7 +131,7 @@ The app deploys to AWS EC2 via GitHub Actions. On every push to `main`:
 | `EC2_USER` | SSH user (e.g. `ubuntu`) |
 | `EC2_SSH_KEY` | PEM private key contents |
 
-## Routes
+## API Routes
 
 | Route | Description |
 |-------|-------------|
