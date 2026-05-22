@@ -12,6 +12,20 @@ A full-stack Learning Management System built with ASP.NET Core 9 MVC, Razor Vie
 | Instructor | instructor@lms.com | Teach123! |
 | Student | student@lms.com | Learn123! |
 
+## Screenshots
+
+| Page | Preview |
+|------|---------|
+| Home | ![Home](docs/screenshots/home.png) |
+| Login | ![Login](docs/screenshots/login.png) |
+| Course List | ![Course List](docs/screenshots/course-list.png) |
+| Course Details | ![Course Details](docs/screenshots/course-details.png) |
+| Assignment Details | ![Assignment Details](docs/screenshots/assignment-details.png) |
+| Submit Assignment | ![Submit Assignment](docs/screenshots/submit-assignment.png) |
+| Duplicate Warning | ![Duplicate Warning](docs/screenshots/duplicate-warning.png) |
+| Grading | ![Grading](docs/screenshots/grading.png) |
+| My Grades | ![My Grades](docs/screenshots/my-grades.png) |
+
 ## Tech Stack
 
 - **Framework:** ASP.NET Core 9 MVC with Razor Views
