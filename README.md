@@ -18,13 +18,13 @@ A full-stack Learning Management System built with ASP.NET Core 9 MVC, Razor Vie
 |------|---------|
 | Home | ![Home](docs/screenshots/home.png) |
 | Login | ![Login](docs/screenshots/login.png) |
-| Course List | ![Course List](docs/screenshots/course-list.png) |
-| Course Details | ![Course Details](docs/screenshots/course-details.png) |
-| Assignment Details | ![Assignment Details](docs/screenshots/assignment-details.png) |
-| Submit Assignment | ![Submit Assignment](docs/screenshots/submit-assignment.png) |
-| Duplicate Warning | ![Duplicate Warning](docs/screenshots/duplicate-warning.png) |
-| Grading | ![Grading](docs/screenshots/grading.png) |
-| My Grades | ![My Grades](docs/screenshots/my-grades.png) |
+| Course List | ![Course List](docs/screenshots/CourseList.png) |
+| Course Details | ![Course Details](docs/screenshots/CouseDetail.png) |
+| Submit Assignment | ![Submit Assignment](docs/screenshots/Submit%20Assignment.png) |
+| Successful Submission | ![Successful Submission](docs/screenshots/succesfully%20sumbit.png) |
+| Duplicate Warning | ![Duplicate Warning](docs/screenshots/failed.png) |
+| Grading | ![Grading](docs/screenshots/grade.png) |
+| My Grades | ![My Grades](docs/screenshots/view%20grade.png) |
 
 ## Tech Stack
 
