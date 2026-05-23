@@ -6,24 +6,24 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
-// Grading actions for Instructor/Admin and grade viewing for Students
 public class GradeController(
     IGradeService gradeService,
-    ISubmissionService submissionService) : Controller
+    ISubmissionService submissionService) : BaseController
 {
-    // Show the grading form for a submission
     [Authorize(Roles = "Instructor,Admin")]
     [HttpGet]
     public async Task<IActionResult> Grade(int submissionId)
     {
-        var submission = await submissionService.GetByIdAsync(submissionId);
-        ViewBag.SubmissionId = submissionId;
-        ViewBag.StudentName = submission.StudentName;
-        ViewBag.AssignmentTitle = submission.AssignmentTitle;
-        return View(new GradeSubmissionRequest());
+        var result = await submissionService.GetByIdAsync(submissionId);
+        return HandleResult(result, submission =>
+        {
+            ViewBag.SubmissionId = submissionId;
+            ViewBag.StudentName = submission.StudentName;
+            ViewBag.AssignmentTitle = submission.AssignmentTitle;
+            return View(new GradeSubmissionRequest());
+        });
     }
 
-    // Submit a new grade for a submission
     [Authorize(Roles = "Instructor,Admin")]
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -36,34 +36,34 @@ public class GradeController(
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        try
-        {
-            await gradeService.GradeSubmissionAsync(submissionId, userId, User.IsInRole("Admin"), request);
-            TempData["Success"] = "Submission graded successfully.";
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["Error"] = ex.Message;
-        }
-        return RedirectToAction("Details", "Submission", new { id = submissionId });
+        var result = await gradeService.GradeSubmissionAsync(submissionId, userId, User.IsInRole("Admin"), request);
+        return HandleResultWithFeedback(result,
+            _ =>
+            {
+                TempData["Success"] = "Submission graded successfully.";
+                return RedirectToAction("Details", "Submission", new { id = submissionId });
+            },
+            () => RedirectToAction("Details", "Submission", new { id = submissionId }));
     }
 
-    // Show the edit form pre-filled with the existing grade
     [Authorize(Roles = "Instructor,Admin")]
     [HttpGet]
     public async Task<IActionResult> Edit(int submissionId)
     {
-        var submission = await submissionService.GetByIdAsync(submissionId);
-        ViewBag.SubmissionId = submissionId;
-        ViewBag.StudentName = submission.StudentName;
-        ViewBag.AssignmentTitle = submission.AssignmentTitle;
-
-        var request = new GradeSubmissionRequest
+        var result = await submissionService.GetByIdAsync(submissionId);
+        return HandleResult(result, submission =>
         {
-            Score = submission.Grade?.Score ?? 0,
-            Feedback = submission.Grade?.Feedback
-        };
-        return View(request);
+            ViewBag.SubmissionId = submissionId;
+            ViewBag.StudentName = submission.StudentName;
+            ViewBag.AssignmentTitle = submission.AssignmentTitle;
+
+            var request = new GradeSubmissionRequest
+            {
+                Score = submission.Grade?.Score ?? 0,
+                Feedback = submission.Grade?.Feedback
+            };
+            return View(request);
+        });
     }
 
     [Authorize(Roles = "Instructor,Admin")]
@@ -78,18 +78,25 @@ public class GradeController(
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await gradeService.UpdateGradeAsync(submissionId, userId, User.IsInRole("Admin"), request);
-        TempData["Success"] = "Grade updated successfully.";
-        return RedirectToAction("Details", "Submission", new { id = submissionId });
+        var result = await gradeService.UpdateGradeAsync(submissionId, userId, User.IsInRole("Admin"), request);
+        return HandleResult(result, _ =>
+        {
+            TempData["Success"] = "Grade updated successfully.";
+            return RedirectToAction("Details", "Submission", new { id = submissionId });
+        });
     }
 
-    // Student-only: view grades for all submissions in a specific course
     [Authorize(Roles = "Student")]
-    public async Task<IActionResult> MyGrades(int courseId)
+    public async Task<IActionResult> MyGrades(int courseId, int page = 1, int pageSize = 10)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var grades = await gradeService.GetGradesForStudentCourseAsync(userId, courseId);
-        ViewBag.CourseId = courseId;
-        return View(grades);
+        var result = await gradeService.GetGradesForStudentCourseAsync(userId, courseId, page, pageSize);
+        var average = await gradeService.GetAverageScoreAsync(userId, courseId);
+        return HandleResult(result, grades =>
+        {
+            ViewBag.CourseId = courseId;
+            ViewBag.AverageScore = average;
+            return View(grades);
+        });
     }
 }

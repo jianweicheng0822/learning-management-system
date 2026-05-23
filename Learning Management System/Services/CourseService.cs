@@ -1,14 +1,14 @@
 using LMS.Data;
 using LMS.DTOs;
+using LMS.Extensions;
 using LMS.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
-// Handles course lifecycle: create, update, delete, and student enrollment/unenrollment
 public class CourseService(ApplicationDbContext db) : ICourseService
 {
-    public async Task<CourseDto> CreateAsync(string instructorId, CreateCourseRequest request)
+    public async Task<ServiceResult<CourseDto>> CreateAsync(string instructorId, CreateCourseRequest request)
     {
         var course = new Course
         {
@@ -20,25 +20,28 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         db.Courses.Add(course);
         await db.SaveChangesAsync();
 
-        return await QueryCourses().FirstAsync(c => c.Id == course.Id);
+        var dto = await QueryCourses().FirstAsync(c => c.Id == course.Id);
+        return ServiceResult.Success(dto);
     }
 
-    public async Task<IList<CourseDto>> GetAllAsync()
+    public async Task<ServiceResult<PagedResult<CourseDto>>> GetAllAsync(int page = 1, int pageSize = 9)
     {
-        return await QueryCourses().ToListAsync();
+        var paged = await QueryCourses().ToPagedResultAsync(page, pageSize);
+        return ServiceResult.Success(paged);
     }
 
-    // Eagerly loads instructor, enrolled students, and assignments with submission counts
-    public async Task<CourseDetailDto> GetByIdAsync(int id)
+    public async Task<ServiceResult<CourseDetailDto>> GetByIdAsync(int id)
     {
         var course = await db.Courses
             .Include(c => c.Instructor)
             .Include(c => c.Enrollments).ThenInclude(e => e.Student)
             .Include(c => c.Assignments).ThenInclude(a => a.Submissions)
-            .FirstOrDefaultAsync(c => c.Id == id)
-            ?? throw new KeyNotFoundException("Course not found.");
+            .FirstOrDefaultAsync(c => c.Id == id);
 
-        return new CourseDetailDto
+        if (course is null)
+            return ServiceResult.Failure<CourseDetailDto>(ErrorType.NotFound, "Course not found.");
+
+        var dto = new CourseDetailDto
         {
             Id = course.Id,
             Title = course.Title,
@@ -66,45 +69,51 @@ public class CourseService(ApplicationDbContext db) : ICourseService
                 CreatedAt = a.CreatedAt
             }).ToList()
         };
+
+        return ServiceResult.Success(dto);
     }
 
-    // Ownership check: only the course instructor or an admin can update
-    public async Task<CourseDto> UpdateAsync(int id, string userId, bool isAdmin, UpdateCourseRequest request)
+    public async Task<ServiceResult<CourseDto>> UpdateAsync(int id, string userId, bool isAdmin, UpdateCourseRequest request)
     {
-        var course = await db.Courses.FindAsync(id)
-            ?? throw new KeyNotFoundException("Course not found.");
+        var course = await db.Courses.FindAsync(id);
+        if (course is null)
+            return ServiceResult.Failure<CourseDto>(ErrorType.NotFound, "Course not found.");
 
         if (!isAdmin && course.InstructorId != userId)
-            throw new UnauthorizedAccessException("You can only update your own courses.");
+            return ServiceResult.Failure<CourseDto>(ErrorType.Unauthorized, "You can only update your own courses.");
 
         course.Title = request.Title;
         course.Description = request.Description;
         await db.SaveChangesAsync();
 
-        return await QueryCourses().FirstAsync(c => c.Id == id);
+        var dto = await QueryCourses().FirstAsync(c => c.Id == id);
+        return ServiceResult.Success(dto);
     }
 
-    public async Task DeleteAsync(int id, string userId, bool isAdmin)
+    public async Task<ServiceResult> DeleteAsync(int id, string userId, bool isAdmin)
     {
-        var course = await db.Courses.FindAsync(id)
-            ?? throw new KeyNotFoundException("Course not found.");
+        var course = await db.Courses.FindAsync(id);
+        if (course is null)
+            return ServiceResult.Failure(ErrorType.NotFound, "Course not found.");
 
         if (!isAdmin && course.InstructorId != userId)
-            throw new UnauthorizedAccessException("You can only delete your own courses.");
+            return ServiceResult.Failure(ErrorType.Unauthorized, "You can only delete your own courses.");
 
         db.Courses.Remove(course);
         await db.SaveChangesAsync();
+        return ServiceResult.Success();
     }
 
-    // Prevents duplicate enrollments by checking before inserting
-    public async Task EnrollStudentAsync(int courseId, string studentId)
+    public async Task<ServiceResult> EnrollStudentAsync(int courseId, string studentId)
     {
         var courseExists = await db.Courses.AnyAsync(c => c.Id == courseId);
-        if (!courseExists) throw new KeyNotFoundException("Course not found.");
+        if (!courseExists)
+            return ServiceResult.Failure(ErrorType.NotFound, "Course not found.");
 
         var alreadyEnrolled = await db.Enrollments
             .AnyAsync(e => e.CourseId == courseId && e.StudentId == studentId);
-        if (alreadyEnrolled) throw new InvalidOperationException("Already enrolled in this course.");
+        if (alreadyEnrolled)
+            return ServiceResult.Failure(ErrorType.Conflict, "Already enrolled in this course.");
 
         db.Enrollments.Add(new Enrollment
         {
@@ -113,44 +122,43 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         });
 
         await db.SaveChangesAsync();
+        return ServiceResult.Success();
     }
 
-    public async Task UnenrollStudentAsync(int courseId, string studentId)
+    public async Task<ServiceResult> UnenrollStudentAsync(int courseId, string studentId)
     {
         var enrollment = await db.Enrollments
-            .FirstOrDefaultAsync(e => e.CourseId == courseId && e.StudentId == studentId)
-            ?? throw new KeyNotFoundException("Enrollment not found.");
+            .FirstOrDefaultAsync(e => e.CourseId == courseId && e.StudentId == studentId);
+
+        if (enrollment is null)
+            return ServiceResult.Failure(ErrorType.NotFound, "Enrollment not found.");
 
         db.Enrollments.Remove(enrollment);
         await db.SaveChangesAsync();
+        return ServiceResult.Success();
     }
 
-    public async Task<IList<CourseDto>> GetByInstructorAsync(string instructorId)
+    public async Task<ServiceResult<PagedResult<CourseDto>>> GetByInstructorAsync(string instructorId, int page = 1, int pageSize = 9)
     {
-        return await QueryCourses()
+        var paged = await QueryCourses()
             .Where(c => c.InstructorId == instructorId)
-            .ToListAsync();
+            .ToPagedResultAsync(page, pageSize);
+        return ServiceResult.Success(paged);
     }
 
-    public async Task<IList<CourseDto>> GetEnrolledCoursesAsync(string studentId)
+    public async Task<ServiceResult<PagedResult<CourseDto>>> GetEnrolledCoursesAsync(string studentId, int page = 1, int pageSize = 9)
     {
-        return await db.Enrollments
+        var enrolledCourseIds = db.Enrollments
             .Where(e => e.StudentId == studentId)
-            .Select(e => e.Course)
-            .Select(c => new CourseDto
-            {
-                Id = c.Id,
-                Title = c.Title,
-                Description = c.Description,
-                InstructorId = c.InstructorId,
-                InstructorName = c.Instructor.FullName,
-                EnrolledCount = c.Enrollments.Count,
-                CreatedAt = c.CreatedAt
-            })
-            .ToListAsync();
+            .Select(e => e.CourseId);
+
+        var paged = await QueryCourses()
+            .Where(c => enrolledCourseIds.Contains(c.Id))
+            .ToPagedResultAsync(page, pageSize);
+
+        return ServiceResult.Success(paged);
     }
 
-    // Reusable projection query — keeps CourseDto mapping in one place
     private IQueryable<CourseDto> QueryCourses()
     {
         return db.Courses

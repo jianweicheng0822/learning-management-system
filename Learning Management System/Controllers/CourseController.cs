@@ -6,20 +6,18 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
-// Course browsing, CRUD (Instructor/Admin), and enrollment actions (Student)
-public class CourseController(ICourseService courseService) : Controller
+public class CourseController(ICourseService courseService) : BaseController
 {
-    // List all courses — accessible to everyone
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 9)
     {
-        var courses = await courseService.GetAllAsync();
-        return View(courses);
+        var result = await courseService.GetAllAsync(page, pageSize);
+        return HandleResult(result, courses => View(courses));
     }
 
     public async Task<IActionResult> Details(int id)
     {
-        var course = await courseService.GetByIdAsync(id);
-        return View(course);
+        var result = await courseService.GetByIdAsync(id);
+        return HandleResult(result, course => View(course));
     }
 
     [Authorize(Roles = "Instructor,Admin")]
@@ -38,23 +36,29 @@ public class CourseController(ICourseService courseService) : Controller
             return View(request);
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var course = await courseService.CreateAsync(userId, request);
-        TempData["Success"] = "Course created successfully.";
-        return RedirectToAction("Details", new { id = course.Id });
+        var result = await courseService.CreateAsync(userId, request);
+        return HandleResult(result, course =>
+        {
+            TempData["Success"] = "Course created successfully.";
+            return RedirectToAction("Details", new { id = course.Id });
+        });
     }
 
     [Authorize(Roles = "Instructor,Admin")]
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
-        var course = await courseService.GetByIdAsync(id);
-        var request = new UpdateCourseRequest
+        var result = await courseService.GetByIdAsync(id);
+        return HandleResult(result, course =>
         {
-            Title = course.Title,
-            Description = course.Description
-        };
-        ViewBag.CourseId = id;
-        return View(request);
+            var request = new UpdateCourseRequest
+            {
+                Title = course.Title,
+                Description = course.Description
+            };
+            ViewBag.CourseId = id;
+            return View(request);
+        });
     }
 
     [Authorize(Roles = "Instructor,Admin")]
@@ -69,17 +73,20 @@ public class CourseController(ICourseService courseService) : Controller
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await courseService.UpdateAsync(id, userId, User.IsInRole("Admin"), request);
-        TempData["Success"] = "Course updated successfully.";
-        return RedirectToAction("Details", new { id });
+        var result = await courseService.UpdateAsync(id, userId, User.IsInRole("Admin"), request);
+        return HandleResult(result, _ =>
+        {
+            TempData["Success"] = "Course updated successfully.";
+            return RedirectToAction("Details", new { id });
+        });
     }
 
     [Authorize(Roles = "Instructor,Admin")]
     [HttpGet]
     public async Task<IActionResult> Delete(int id)
     {
-        var course = await courseService.GetByIdAsync(id);
-        return View(course);
+        var result = await courseService.GetByIdAsync(id);
+        return HandleResult(result, course => View(course));
     }
 
     [Authorize(Roles = "Instructor,Admin")]
@@ -88,57 +95,57 @@ public class CourseController(ICourseService courseService) : Controller
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await courseService.DeleteAsync(id, userId, User.IsInRole("Admin"));
-        TempData["Success"] = "Course deleted successfully.";
-        return RedirectToAction("Index");
+        var result = await courseService.DeleteAsync(id, userId, User.IsInRole("Admin"));
+        return HandleResult(result, () =>
+        {
+            TempData["Success"] = "Course deleted successfully.";
+            return RedirectToAction("Index");
+        });
     }
 
-    // Instructor-only: list courses taught by the current user
     [Authorize(Roles = "Instructor")]
-    public async Task<IActionResult> MyCourses()
+    public async Task<IActionResult> MyCourses(int page = 1, int pageSize = 9)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var courses = await courseService.GetByInstructorAsync(userId);
-        return View(courses);
+        var result = await courseService.GetByInstructorAsync(userId, page, pageSize);
+        return HandleResult(result, courses => View(courses));
     }
 
-    // Student-only: list courses the current student is enrolled in
     [Authorize(Roles = "Student")]
-    public async Task<IActionResult> Enrolled()
+    public async Task<IActionResult> Enrolled(int page = 1, int pageSize = 9)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var courses = await courseService.GetEnrolledCoursesAsync(userId);
-        return View(courses);
+        var result = await courseService.GetEnrolledCoursesAsync(userId, page, pageSize);
+        return HandleResult(result, courses => View(courses));
     }
 
-    // Student-only: enroll in a course
     [Authorize(Roles = "Student")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Enroll(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        try
-        {
-            await courseService.EnrollStudentAsync(id, userId);
-            TempData["Success"] = "Enrolled successfully.";
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["Error"] = ex.Message;
-        }
-        return RedirectToAction("Details", new { id });
+        var result = await courseService.EnrollStudentAsync(id, userId);
+        return HandleResultWithFeedback(result,
+            () =>
+            {
+                TempData["Success"] = "Enrolled successfully.";
+                return RedirectToAction("Details", new { id });
+            },
+            () => RedirectToAction("Details", new { id }));
     }
 
-    // Student-only: drop a course
     [Authorize(Roles = "Student")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Unenroll(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await courseService.UnenrollStudentAsync(id, userId);
-        TempData["Success"] = "Unenrolled successfully.";
-        return RedirectToAction("Index");
+        var result = await courseService.UnenrollStudentAsync(id, userId);
+        return HandleResult(result, () =>
+        {
+            TempData["Success"] = "Unenrolled successfully.";
+            return RedirectToAction("Index");
+        });
     }
 }

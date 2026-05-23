@@ -1,0 +1,45 @@
+@model dynamic
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                <a class="page-link" href="@BuildPageUrl(Model.Page - 1)">Previous</a>
+            </li>
+
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.Page ? "active" : "")">
+                    <a class="page-link" href="@BuildPageUrl(i)">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                <a class="page-link" href="@BuildPageUrl(Model.Page + 1)">Next</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+@functions {
+    string BuildPageUrl(int page)
+    {
+        var query = new Dictionary<string, string?> { ["page"] = page.ToString() };
+
+        // Preserve existing query params (like courseId, assignmentId) except page
+        foreach (var key in Context.Request.Query.Keys)
+        {
+            if (!string.Equals(key, "page", StringComparison.OrdinalIgnoreCase))
+            {
+                query[key] = Context.Request.Query[key];
+            }
+        }
+
+        var queryString = string.Join("&", query
+            .Where(kv => kv.Value != null)
+            .Select(kv => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value!)}"));
+
+        return $"{Context.Request.Path}?{queryString}";
+    }
+}

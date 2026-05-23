@@ -1,4 +1,4 @@
-@model IList<LMS.DTOs.CourseDto>
+@model PagedResult<CourseDto>
 @{
     ViewData["Title"] = "My Courses";
 }
@@ -8,7 +8,7 @@
     <a asp-action="Create" class="btn btn-primary">Create Course</a>
 </div>
 
-@if (!Model.Any())
+@if (!Model.Items.Any())
 {
     <p class="text-muted">You haven't created any courses yet.</p>
 }
@@ -24,7 +24,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var course in Model)
+            @foreach (var course in Model.Items)
             {
                 <tr>
                     <td>@course.Title</td>
@@ -38,4 +38,6 @@ else
             }
         </tbody>
     </table>
+
+    <partial name="_Pagination" model="Model" />
 }

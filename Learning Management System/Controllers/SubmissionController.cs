@@ -6,20 +6,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LMS.Controllers;
 
-// Submission creation (Student), listing (Instructor/Admin), and detail viewing
 public class SubmissionController(
     ISubmissionService submissionService,
-    IAssignmentService assignmentService) : Controller
+    IAssignmentService assignmentService) : BaseController
 {
     [Authorize(Roles = "Student")]
     [HttpGet]
     public async Task<IActionResult> Create(int assignmentId)
     {
-        var assignment = await assignmentService.GetByIdAsync(assignmentId);
-        ViewBag.AssignmentId = assignmentId;
-        ViewBag.AssignmentTitle = assignment.Title;
-        ViewBag.CourseName = assignment.CourseName;
-        return View(new CreateSubmissionRequest());
+        var result = await assignmentService.GetByIdAsync(assignmentId);
+        return HandleResult(result, assignment =>
+        {
+            ViewBag.AssignmentId = assignmentId;
+            ViewBag.AssignmentTitle = assignment.Title;
+            ViewBag.CourseName = assignment.CourseName;
+            return View(new CreateSubmissionRequest());
+        });
     }
 
     [Authorize(Roles = "Student")]
@@ -34,44 +36,45 @@ public class SubmissionController(
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        try
-        {
-            var submission = await submissionService.SubmitAsync(assignmentId, userId, request);
-            TempData["Success"] = "Assignment submitted successfully.";
-            return RedirectToAction("Details", new { id = submission.Id });
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["Error"] = ex.Message;
-            return RedirectToAction("Details", "Assignment", new { id = assignmentId });
-        }
+        var result = await submissionService.SubmitAsync(assignmentId, userId, request);
+        return HandleResultWithFeedback(result,
+            submission =>
+            {
+                TempData["Success"] = "Assignment submitted successfully.";
+                return RedirectToAction("Details", new { id = submission.Id });
+            },
+            () => RedirectToAction("Details", "Assignment", new { id = assignmentId }));
     }
 
-    // Instructor/Admin: view all submissions for an assignment (for grading)
     [Authorize(Roles = "Instructor,Admin")]
-    public async Task<IActionResult> Index(int assignmentId)
+    public async Task<IActionResult> Index(int assignmentId, int page = 1, int pageSize = 10)
     {
-        var submissions = await submissionService.GetByAssignmentAsync(assignmentId);
-        var assignment = await assignmentService.GetByIdAsync(assignmentId);
-        ViewBag.AssignmentId = assignmentId;
-        ViewBag.AssignmentTitle = assignment.Title;
-        ViewBag.CourseId = assignment.CourseId;
-        return View(submissions);
+        var assignmentResult = await assignmentService.GetByIdAsync(assignmentId);
+        if (!assignmentResult.IsSuccess)
+            return HandleResult(assignmentResult, _ => View());
+
+        var result = await submissionService.GetByAssignmentAsync(assignmentId, page, pageSize);
+        return HandleResult(result, submissions =>
+        {
+            ViewBag.AssignmentId = assignmentId;
+            ViewBag.AssignmentTitle = assignmentResult.Value!.Title;
+            ViewBag.CourseId = assignmentResult.Value.CourseId;
+            return View(submissions);
+        });
     }
 
     [Authorize]
     public async Task<IActionResult> Details(int id)
     {
-        var submission = await submissionService.GetByIdAsync(id);
-        return View(submission);
+        var result = await submissionService.GetByIdAsync(id);
+        return HandleResult(result, submission => View(submission));
     }
 
-    // Student-only: view all of the current student's submissions
     [Authorize(Roles = "Student")]
-    public async Task<IActionResult> MySubmissions()
+    public async Task<IActionResult> MySubmissions(int page = 1, int pageSize = 10)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var submissions = await submissionService.GetByStudentAsync(userId);
-        return View(submissions);
+        var result = await submissionService.GetByStudentAsync(userId, page, pageSize);
+        return HandleResult(result, submissions => View(submissions));
     }
 }

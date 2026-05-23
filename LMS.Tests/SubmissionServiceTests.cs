@@ -25,13 +25,14 @@ public class SubmissionServiceTests : IDisposable
         var request = new CreateSubmissionRequest { TextContent = "My answer" };
         var result = await _sut.SubmitAsync(assignment.Id, student.Id, request);
 
-        Assert.Equal("My answer", result.TextContent);
-        Assert.Equal(student.Id, result.StudentId);
-        Assert.Equal(assignment.Id, result.AssignmentId);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("My answer", result.Value!.TextContent);
+        Assert.Equal(student.Id, result.Value.StudentId);
+        Assert.Equal(assignment.Id, result.Value.AssignmentId);
     }
 
     [Fact]
-    public async Task SubmitAsync_ThrowsIfNotEnrolled()
+    public async Task SubmitAsync_ReturnsUnauthorizedIfNotEnrolled()
     {
         var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
         var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
@@ -39,13 +40,14 @@ public class SubmissionServiceTests : IDisposable
         var assignment = _db.CreateAssignment(course.Id);
 
         var request = new CreateSubmissionRequest { TextContent = "My answer" };
+        var result = await _sut.SubmitAsync(assignment.Id, student.Id, request);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.SubmitAsync(assignment.Id, student.Id, request));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, result.Error);
     }
 
     [Fact]
-    public async Task SubmitAsync_ThrowsIfAlreadySubmitted()
+    public async Task SubmitAsync_ReturnsConflictIfAlreadySubmitted()
     {
         var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
         var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
@@ -55,13 +57,14 @@ public class SubmissionServiceTests : IDisposable
         _db.CreateSubmission(student.Id, assignment.Id);
 
         var request = new CreateSubmissionRequest { TextContent = "Second attempt" };
+        var result = await _sut.SubmitAsync(assignment.Id, student.Id, request);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.SubmitAsync(assignment.Id, student.Id, request));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, result.Error);
     }
 
     [Fact]
-    public async Task SubmitAsync_ThrowsIfNoContent()
+    public async Task SubmitAsync_ReturnsValidationErrorIfNoContent()
     {
         var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
         var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
@@ -70,9 +73,10 @@ public class SubmissionServiceTests : IDisposable
         var assignment = _db.CreateAssignment(course.Id);
 
         var request = new CreateSubmissionRequest();
+        var result = await _sut.SubmitAsync(assignment.Id, student.Id, request);
 
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => _sut.SubmitAsync(assignment.Id, student.Id, request));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.ValidationError, result.Error);
     }
 
     [Fact]
@@ -90,7 +94,8 @@ public class SubmissionServiceTests : IDisposable
 
         var result = await _sut.GetByAssignmentAsync(assignment.Id);
 
-        Assert.Equal(2, result.Count);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value!.TotalCount);
     }
 
     [Fact]
@@ -108,8 +113,55 @@ public class SubmissionServiceTests : IDisposable
 
         var result = await _sut.GetByStudentAsync(student1.Id);
 
-        Assert.Single(result);
-        Assert.Equal(student1.Id, result[0].StudentId);
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value!.Items);
+        Assert.Equal(student1.Id, result.Value.Items[0].StudentId);
+    }
+
+    [Fact]
+    public async Task GetByAssignmentAsync_PaginatesCorrectly()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+
+        for (int i = 1; i <= 5; i++)
+        {
+            var student = _db.CreateUser($"stu-{i}", $"Student {i}", $"stu{i}@test.com");
+            _db.CreateEnrollment(student.Id, course.Id);
+            _db.CreateSubmission(student.Id, assignment.Id);
+        }
+
+        var page1 = await _sut.GetByAssignmentAsync(assignment.Id, page: 1, pageSize: 2);
+        var page2 = await _sut.GetByAssignmentAsync(assignment.Id, page: 2, pageSize: 2);
+
+        Assert.Equal(5, page1.Value!.TotalCount);
+        Assert.Equal(2, page1.Value.Items.Count);
+        Assert.True(page1.Value.HasNextPage);
+
+        Assert.Equal(2, page2.Value!.Items.Count);
+        Assert.True(page2.Value.HasPreviousPage);
+    }
+
+    [Fact]
+    public async Task GetByStudentAsync_PaginatesCorrectly()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+
+        for (int i = 1; i <= 4; i++)
+        {
+            var assignment = _db.CreateAssignment(course.Id, $"HW{i}");
+            _db.CreateSubmission(student.Id, assignment.Id);
+        }
+
+        var result = await _sut.GetByStudentAsync(student.Id, page: 1, pageSize: 2);
+
+        Assert.Equal(4, result.Value!.TotalCount);
+        Assert.Equal(2, result.Value.Items.Count);
+        Assert.True(result.Value.HasNextPage);
     }
 
     public void Dispose() => _db.Dispose();

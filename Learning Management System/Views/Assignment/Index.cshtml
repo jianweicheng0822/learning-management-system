@@ -1,4 +1,4 @@
-@model IList<LMS.DTOs.AssignmentDto>
+@model PagedResult<AssignmentDto>
 @{
     ViewData["Title"] = "Assignments";
 }
@@ -13,7 +13,7 @@
 
 <a asp-controller="Course" asp-action="Details" asp-route-id="@ViewBag.CourseId" class="btn btn-sm btn-outline-secondary mb-3">Back to Course</a>
 
-@if (!Model.Any())
+@if (!Model.Items.Any())
 {
     <p class="text-muted">No assignments for this course.</p>
 }
@@ -29,7 +29,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var a in Model)
+            @foreach (var a in Model.Items)
             {
                 <tr>
                     <td>@a.Title</td>
@@ -50,4 +50,6 @@ else
             }
         </tbody>
     </table>
+
+    <partial name="_Pagination" model="Model" />
 }

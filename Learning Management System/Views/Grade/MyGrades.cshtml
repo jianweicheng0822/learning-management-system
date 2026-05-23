@@ -1,4 +1,4 @@
-@model IList<LMS.DTOs.SubmissionDto>
+@model PagedResult<SubmissionDto>
 @{
     ViewData["Title"] = "My Grades";
 }
@@ -7,7 +7,7 @@
 
 <a asp-controller="Course" asp-action="Details" asp-route-id="@ViewBag.CourseId" class="btn btn-sm btn-outline-secondary mb-3">Back to Course</a>
 
-@if (!Model.Any())
+@if (!Model.Items.Any())
 {
     <p class="text-muted">No graded submissions for this course.</p>
 }
@@ -24,7 +24,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var s in Model)
+            @foreach (var s in Model.Items)
             {
                 <tr>
                     <td>@s.AssignmentTitle</td>
@@ -46,15 +46,15 @@ else
         </tbody>
     </table>
 
-    @if (Model.Any(s => s.Grade != null))
+    @if (ViewBag.AverageScore != null)
     {
-        var gradedSubmissions = Model.Where(s => s.Grade != null).ToList();
-        var average = gradedSubmissions.Average(s => s.Grade!.Score);
         <div class="card mt-3" style="max-width: 300px;">
             <div class="card-body text-center">
                 <h5 class="card-title">Course Average</h5>
-                <p class="display-6">@average.ToString("F1") / 100</p>
+                <p class="display-6">@(((decimal)ViewBag.AverageScore).ToString("F1")) / 100</p>
             </div>
         </div>
     }
+
+    <partial name="_Pagination" model="Model" />
 }

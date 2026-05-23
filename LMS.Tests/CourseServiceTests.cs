@@ -21,9 +21,10 @@ public class CourseServiceTests : IDisposable
 
         var result = await _sut.CreateAsync(instructor.Id, request);
 
-        Assert.Equal("C# 101", result.Title);
-        Assert.Equal("John Doe", result.InstructorName);
-        Assert.Equal(0, result.EnrolledCount);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("C# 101", result.Value!.Title);
+        Assert.Equal("John Doe", result.Value.InstructorName);
+        Assert.Equal(0, result.Value.EnrolledCount);
     }
 
     [Fact]
@@ -35,7 +36,9 @@ public class CourseServiceTests : IDisposable
 
         var result = await _sut.GetAllAsync();
 
-        Assert.Equal(2, result.Count);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value!.TotalCount);
+        Assert.Equal(2, result.Value.Items.Count);
     }
 
     [Fact]
@@ -49,17 +52,20 @@ public class CourseServiceTests : IDisposable
 
         var result = await _sut.GetByIdAsync(course.Id);
 
-        Assert.Equal(course.Id, result.Id);
-        Assert.Single(result.EnrolledStudents);
-        Assert.Single(result.Assignments);
-        Assert.Equal("Jane Smith", result.EnrolledStudents[0].FullName);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(course.Id, result.Value!.Id);
+        Assert.Single(result.Value.EnrolledStudents);
+        Assert.Single(result.Value.Assignments);
+        Assert.Equal("Jane Smith", result.Value.EnrolledStudents[0].FullName);
     }
 
     [Fact]
-    public async Task GetByIdAsync_ThrowsForNonExistent()
+    public async Task GetByIdAsync_ReturnsNotFoundForNonExistent()
     {
-        await Assert.ThrowsAsync<KeyNotFoundException>(
-            () => _sut.GetByIdAsync(999));
+        var result = await _sut.GetByIdAsync(999);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.NotFound, result.Error);
     }
 
     [Fact]
@@ -71,20 +77,23 @@ public class CourseServiceTests : IDisposable
 
         var result = await _sut.UpdateAsync(course.Id, instructor.Id, false, request);
 
-        Assert.Equal("New Title", result.Title);
-        Assert.Equal("New Desc", result.Description);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("New Title", result.Value!.Title);
+        Assert.Equal("New Desc", result.Value.Description);
     }
 
     [Fact]
-    public async Task UpdateAsync_ThrowsForWrongInstructor()
+    public async Task UpdateAsync_ReturnsUnauthorizedForWrongInstructor()
     {
         var instructor = _db.CreateUser("inst-1", "John Doe", "john@test.com");
         _db.CreateUser("inst-2", "Other", "other@test.com");
         var course = _db.CreateCourse(instructor.Id);
         var request = new UpdateCourseRequest { Title = "Hacked", Description = "Hacked" };
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.UpdateAsync(course.Id, "inst-2", false, request));
+        var result = await _sut.UpdateAsync(course.Id, "inst-2", false, request);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, result.Error);
     }
 
     [Fact]
@@ -97,18 +106,21 @@ public class CourseServiceTests : IDisposable
 
         var result = await _sut.UpdateAsync(course.Id, admin.Id, true, request);
 
-        Assert.Equal("Admin Edit", result.Title);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Admin Edit", result.Value!.Title);
     }
 
     [Fact]
-    public async Task DeleteAsync_ThrowsForWrongInstructor()
+    public async Task DeleteAsync_ReturnsUnauthorizedForWrongInstructor()
     {
         var instructor = _db.CreateUser("inst-1", "John Doe", "john@test.com");
         _db.CreateUser("inst-2", "Other", "other@test.com");
         var course = _db.CreateCourse(instructor.Id);
 
-        await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.DeleteAsync(course.Id, "inst-2", false));
+        var result = await _sut.DeleteAsync(course.Id, "inst-2", false);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, result.Error);
     }
 
     [Fact]
@@ -117,10 +129,11 @@ public class CourseServiceTests : IDisposable
         var instructor = _db.CreateUser("inst-1", "John Doe", "john@test.com");
         var course = _db.CreateCourse(instructor.Id);
 
-        await _sut.DeleteAsync(course.Id, "admin-1", true);
+        var result = await _sut.DeleteAsync(course.Id, "admin-1", true);
 
+        Assert.True(result.IsSuccess);
         var all = await _sut.GetAllAsync();
-        Assert.Empty(all);
+        Assert.Equal(0, all.Value!.TotalCount);
     }
 
     [Fact]
@@ -130,22 +143,25 @@ public class CourseServiceTests : IDisposable
         var student = _db.CreateUser("stu-1", "Jane Smith", "jane@test.com");
         var course = _db.CreateCourse(instructor.Id);
 
-        await _sut.EnrollStudentAsync(course.Id, student.Id);
+        var result = await _sut.EnrollStudentAsync(course.Id, student.Id);
 
+        Assert.True(result.IsSuccess);
         var detail = await _sut.GetByIdAsync(course.Id);
-        Assert.Single(detail.EnrolledStudents);
+        Assert.Single(detail.Value!.EnrolledStudents);
     }
 
     [Fact]
-    public async Task EnrollStudentAsync_ThrowsIfAlreadyEnrolled()
+    public async Task EnrollStudentAsync_ReturnsConflictIfAlreadyEnrolled()
     {
         var instructor = _db.CreateUser("inst-1", "John Doe", "john@test.com");
         var student = _db.CreateUser("stu-1", "Jane Smith", "jane@test.com");
         var course = _db.CreateCourse(instructor.Id);
         _db.CreateEnrollment(student.Id, course.Id);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _sut.EnrollStudentAsync(course.Id, student.Id));
+        var result = await _sut.EnrollStudentAsync(course.Id, student.Id);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, result.Error);
     }
 
     [Fact]
@@ -156,10 +172,11 @@ public class CourseServiceTests : IDisposable
         var course = _db.CreateCourse(instructor.Id);
         _db.CreateEnrollment(student.Id, course.Id);
 
-        await _sut.UnenrollStudentAsync(course.Id, student.Id);
+        var result = await _sut.UnenrollStudentAsync(course.Id, student.Id);
 
+        Assert.True(result.IsSuccess);
         var detail = await _sut.GetByIdAsync(course.Id);
-        Assert.Empty(detail.EnrolledStudents);
+        Assert.Empty(detail.Value!.EnrolledStudents);
     }
 
     [Fact]
@@ -173,8 +190,9 @@ public class CourseServiceTests : IDisposable
 
         var result = await _sut.GetByInstructorAsync(inst1.Id);
 
-        Assert.Equal(2, result.Count);
-        Assert.All(result, c => Assert.Equal(inst1.Id, c.InstructorId));
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value!.TotalCount);
+        Assert.All(result.Value.Items, c => Assert.Equal(inst1.Id, c.InstructorId));
     }
 
     [Fact]
@@ -188,8 +206,67 @@ public class CourseServiceTests : IDisposable
 
         var result = await _sut.GetEnrolledCoursesAsync(student.Id);
 
-        Assert.Single(result);
-        Assert.Equal("Course A", result[0].Title);
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value!.Items);
+        Assert.Equal("Course A", result.Value.Items[0].Title);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_PaginatesCorrectly()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        for (int i = 1; i <= 5; i++)
+            _db.CreateCourse(instructor.Id, $"Course {i}");
+
+        var page1 = await _sut.GetAllAsync(page: 1, pageSize: 2);
+        var page2 = await _sut.GetAllAsync(page: 2, pageSize: 2);
+        var page3 = await _sut.GetAllAsync(page: 3, pageSize: 2);
+
+        Assert.Equal(5, page1.Value!.TotalCount);
+        Assert.Equal(3, page1.Value.TotalPages);
+        Assert.Equal(2, page1.Value.Items.Count);
+        Assert.True(page1.Value.HasNextPage);
+        Assert.False(page1.Value.HasPreviousPage);
+
+        Assert.Equal(2, page2.Value!.Items.Count);
+        Assert.True(page2.Value.HasPreviousPage);
+        Assert.True(page2.Value.HasNextPage);
+
+        Assert.Single(page3.Value!.Items);
+        Assert.True(page3.Value.HasPreviousPage);
+        Assert.False(page3.Value.HasNextPage);
+    }
+
+    [Fact]
+    public async Task GetByInstructorAsync_PaginatesCorrectly()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        for (int i = 1; i <= 4; i++)
+            _db.CreateCourse(instructor.Id, $"Course {i}");
+
+        var result = await _sut.GetByInstructorAsync(instructor.Id, page: 1, pageSize: 2);
+
+        Assert.Equal(4, result.Value!.TotalCount);
+        Assert.Equal(2, result.Value.Items.Count);
+        Assert.True(result.Value.HasNextPage);
+    }
+
+    [Fact]
+    public async Task GetEnrolledCoursesAsync_PaginatesCorrectly()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        for (int i = 1; i <= 3; i++)
+        {
+            var course = _db.CreateCourse(instructor.Id, $"Course {i}");
+            _db.CreateEnrollment(student.Id, course.Id);
+        }
+
+        var result = await _sut.GetEnrolledCoursesAsync(student.Id, page: 1, pageSize: 2);
+
+        Assert.Equal(3, result.Value!.TotalCount);
+        Assert.Equal(2, result.Value.Items.Count);
+        Assert.True(result.Value.HasNextPage);
     }
 
     public void Dispose() => _db.Dispose();

@@ -1,26 +1,28 @@
 using LMS.Data;
 using LMS.DTOs;
+using LMS.Extensions;
 using LMS.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
-// Handles grading and grade updates — verifies instructor ownership of the parent course
 public class GradeService(ApplicationDbContext db) : IGradeService
 {
-    public async Task<GradeDto> GradeSubmissionAsync(int submissionId, string userId, bool isAdmin, GradeSubmissionRequest request)
+    public async Task<ServiceResult<GradeDto>> GradeSubmissionAsync(int submissionId, string userId, bool isAdmin, GradeSubmissionRequest request)
     {
         var submission = await db.Submissions
             .Include(s => s.Assignment).ThenInclude(a => a.Course)
             .Include(s => s.Grade)
-            .FirstOrDefaultAsync(s => s.Id == submissionId)
-            ?? throw new KeyNotFoundException("Submission not found.");
+            .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+        if (submission is null)
+            return ServiceResult.Failure<GradeDto>(ErrorType.NotFound, "Submission not found.");
 
         if (!isAdmin && submission.Assignment.Course.InstructorId != userId)
-            throw new UnauthorizedAccessException("You can only grade submissions for your own courses.");
+            return ServiceResult.Failure<GradeDto>(ErrorType.Unauthorized, "You can only grade submissions for your own courses.");
 
         if (submission.Grade is not null)
-            throw new InvalidOperationException("This submission has already been graded. Use the update endpoint.");
+            return ServiceResult.Failure<GradeDto>(ErrorType.Conflict, "This submission has already been graded. Use the update endpoint.");
 
         var grade = new Grade
         {
@@ -33,30 +35,34 @@ public class GradeService(ApplicationDbContext db) : IGradeService
         db.Grades.Add(grade);
         await db.SaveChangesAsync();
 
-        return await MapToDto(grade.Id);
+        var dto = await MapToDto(grade.Id);
+        return ServiceResult.Success(dto);
     }
 
-    public async Task<GradeDto> UpdateGradeAsync(int submissionId, string userId, bool isAdmin, GradeSubmissionRequest request)
+    public async Task<ServiceResult<GradeDto>> UpdateGradeAsync(int submissionId, string userId, bool isAdmin, GradeSubmissionRequest request)
     {
         var grade = await db.Grades
             .Include(g => g.Submission).ThenInclude(s => s.Assignment).ThenInclude(a => a.Course)
-            .FirstOrDefaultAsync(g => g.SubmissionId == submissionId)
-            ?? throw new KeyNotFoundException("Grade not found for this submission.");
+            .FirstOrDefaultAsync(g => g.SubmissionId == submissionId);
+
+        if (grade is null)
+            return ServiceResult.Failure<GradeDto>(ErrorType.NotFound, "Grade not found for this submission.");
 
         if (!isAdmin && grade.Submission.Assignment.Course.InstructorId != userId)
-            throw new UnauthorizedAccessException("You can only update grades for your own courses.");
+            return ServiceResult.Failure<GradeDto>(ErrorType.Unauthorized, "You can only update grades for your own courses.");
 
         grade.Score = request.Score;
         grade.Feedback = request.Feedback;
         grade.GradedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
-        return await MapToDto(grade.Id);
+        var dto = await MapToDto(grade.Id);
+        return ServiceResult.Success(dto);
     }
 
-    public async Task<IList<SubmissionDto>> GetGradesForStudentCourseAsync(string studentId, int courseId)
+    public async Task<ServiceResult<PagedResult<SubmissionDto>>> GetGradesForStudentCourseAsync(string studentId, int courseId, int page = 1, int pageSize = 10)
     {
-        return await db.Submissions
+        var paged = await db.Submissions
             .Where(s => s.StudentId == studentId && s.Assignment.CourseId == courseId)
             .Include(s => s.Student)
             .Include(s => s.Assignment)
@@ -80,7 +86,19 @@ public class GradeService(ApplicationDbContext db) : IGradeService
                     GradedByName = s.Grade.GradedBy.FullName
                 }
             })
+            .ToPagedResultAsync(page, pageSize);
+
+        return ServiceResult.Success(paged);
+    }
+
+    public async Task<decimal?> GetAverageScoreAsync(string studentId, int courseId)
+    {
+        var scores = await db.Submissions
+            .Where(s => s.StudentId == studentId && s.Assignment.CourseId == courseId && s.Grade != null)
+            .Select(s => s.Grade!.Score)
             .ToListAsync();
+
+        return scores.Count > 0 ? scores.Average() : null;
     }
 
     private async Task<GradeDto> MapToDto(int gradeId)

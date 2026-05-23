@@ -1,11 +1,11 @@
-@model IList<LMS.DTOs.SubmissionDto>
+@model PagedResult<SubmissionDto>
 @{
     ViewData["Title"] = "My Submissions";
 }
 
 <h2>My Submissions</h2>
 
-@if (!Model.Any())
+@if (!Model.Items.Any())
 {
     <p class="text-muted">You haven't submitted any assignments yet.</p>
 }
@@ -21,7 +21,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var s in Model)
+            @foreach (var s in Model.Items)
             {
                 <tr>
                     <td>@s.AssignmentTitle</td>
@@ -43,4 +43,6 @@ else
             }
         </tbody>
     </table>
+
+    <partial name="_Pagination" model="Model" />
 }

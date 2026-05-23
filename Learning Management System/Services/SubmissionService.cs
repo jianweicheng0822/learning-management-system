@@ -1,32 +1,31 @@
 using LMS.Data;
 using LMS.DTOs;
+using LMS.Extensions;
 using LMS.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
-// Manages student submissions — enforces enrollment, one submission per student per assignment
 public class SubmissionService(ApplicationDbContext db) : ISubmissionService
 {
-    public async Task<SubmissionDto> SubmitAsync(int assignmentId, string studentId, CreateSubmissionRequest request)
+    public async Task<ServiceResult<SubmissionDto>> SubmitAsync(int assignmentId, string studentId, CreateSubmissionRequest request)
     {
-        var assignment = await db.Assignments.Include(a => a.Course).FirstOrDefaultAsync(a => a.Id == assignmentId)
-            ?? throw new KeyNotFoundException("Assignment not found.");
+        var assignment = await db.Assignments.Include(a => a.Course).FirstOrDefaultAsync(a => a.Id == assignmentId);
+        if (assignment is null)
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.NotFound, "Assignment not found.");
 
-        // Verify student is enrolled in the course
         var enrolled = await db.Enrollments
             .AnyAsync(e => e.CourseId == assignment.CourseId && e.StudentId == studentId);
         if (!enrolled)
-            throw new UnauthorizedAccessException("You must be enrolled in the course to submit assignments.");
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.Unauthorized, "You must be enrolled in the course to submit assignments.");
 
-        // Check for existing submission
         var existing = await db.Submissions
             .AnyAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId);
         if (existing)
-            throw new InvalidOperationException("You have already submitted this assignment.");
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.Conflict, "You have already submitted this assignment.");
 
         if (string.IsNullOrWhiteSpace(request.TextContent) && string.IsNullOrWhiteSpace(request.FilePath))
-            throw new ArgumentException("Submission must include text content or a file path.");
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.ValidationError, "Submission must include text content or a file path.");
 
         var submission = new Submission
         {
@@ -39,31 +38,39 @@ public class SubmissionService(ApplicationDbContext db) : ISubmissionService
         db.Submissions.Add(submission);
         await db.SaveChangesAsync();
 
-        return await MapToDto(submission.Id);
+        var dto = await QuerySubmissions().FirstAsync(s => s.Id == submission.Id);
+        return ServiceResult.Success(dto);
     }
 
-    public async Task<SubmissionDto> GetByIdAsync(int id)
+    public async Task<ServiceResult<SubmissionDto>> GetByIdAsync(int id)
     {
-        return await QuerySubmissions()
-            .FirstOrDefaultAsync(s => s.Id == id)
-            ?? throw new KeyNotFoundException("Submission not found.");
+        var dto = await QuerySubmissions().FirstOrDefaultAsync(s => s.Id == id);
+        if (dto is null)
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.NotFound, "Submission not found.");
+
+        return ServiceResult.Success(dto);
     }
 
-    public async Task<IList<SubmissionDto>> GetByAssignmentAsync(int assignmentId)
+    public async Task<ServiceResult<PagedResult<SubmissionDto>>> GetByAssignmentAsync(int assignmentId, int page = 1, int pageSize = 10)
     {
         var exists = await db.Assignments.AnyAsync(a => a.Id == assignmentId);
-        if (!exists) throw new KeyNotFoundException("Assignment not found.");
+        if (!exists)
+            return ServiceResult.Failure<PagedResult<SubmissionDto>>(ErrorType.NotFound, "Assignment not found.");
 
-        return await QuerySubmissions()
+        var paged = await QuerySubmissions()
             .Where(s => s.AssignmentId == assignmentId)
-            .ToListAsync();
+            .ToPagedResultAsync(page, pageSize);
+
+        return ServiceResult.Success(paged);
     }
 
-    public async Task<IList<SubmissionDto>> GetByStudentAsync(string studentId)
+    public async Task<ServiceResult<PagedResult<SubmissionDto>>> GetByStudentAsync(string studentId, int page = 1, int pageSize = 10)
     {
-        return await QuerySubmissions()
+        var paged = await QuerySubmissions()
             .Where(s => s.StudentId == studentId)
-            .ToListAsync();
+            .ToPagedResultAsync(page, pageSize);
+
+        return ServiceResult.Success(paged);
     }
 
     private IQueryable<SubmissionDto> QuerySubmissions()
@@ -91,10 +98,5 @@ public class SubmissionService(ApplicationDbContext db) : ISubmissionService
                     GradedByName = s.Grade.GradedBy.FullName
                 }
             });
-    }
-
-    private async Task<SubmissionDto> MapToDto(int submissionId)
-    {
-        return await QuerySubmissions().FirstAsync(s => s.Id == submissionId);
     }
 }
