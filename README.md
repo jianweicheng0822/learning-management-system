@@ -44,12 +44,22 @@ A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Ent
 | Home | ![Home](docs/screenshots/home.png) |
 | Login | ![Login](docs/screenshots/login.png) |
 | Course List | ![Course List](docs/screenshots/CourseList.png) |
-| Course Details | ![Course Details](docs/screenshots/CouseDetail.png) |
+| Course Details | ![Course Details](docs/screenshots/CourseDetail.png) |
 | Submit Assignment | ![Submit Assignment](docs/screenshots/Submit%20Assignment.png) |
-| Successful Submission | ![Successful Submission](docs/screenshots/succesfully%20sumbit.png) |
+| Successful Submission | ![Successful Submission](docs/screenshots/successful-submission.png) |
 | Duplicate Warning | ![Duplicate Warning](docs/screenshots/failed.png) |
 | Grading | ![Grading](docs/screenshots/grade.png) |
 | My Grades | ![My Grades](docs/screenshots/view%20grade.png) |
+
+## Key Design Decisions
+
+- **Result pattern over exceptions** — Service methods return `ServiceResult<T>` instead of throwing exceptions for expected errors (not found, unauthorized, duplicate). This replaces exception-driven control flow with explicit success/failure paths, making error handling predictable and testable. A global `ExceptionHandlingMiddleware` still catches truly unexpected failures as a safety net.
+
+- **Service layer with dependency inversion** — Controllers depend on service interfaces (`ICourseService`, `IAssignmentService`, etc.), not implementations. All business logic lives in the service layer; controllers only handle HTTP concerns and map `ServiceResult` outcomes to views. A shared `BaseController.HandleResult<T>()` method standardizes this mapping across all controllers.
+
+- **Server-side pagination** — List endpoints use a generic `PagedResult<T>` record and a `ToPagedResultAsync()` extension method on `IQueryable<T>`, pushing `Skip`/`Take` to the database rather than loading full tables into memory.
+
+- **Pomelo MySQL provider** — Chosen over Oracle's MySQL connector because Pomelo is the community-recommended EF Core provider for MySQL, with broader feature support and active maintenance for .NET 9.
 
 ## Architecture
 
