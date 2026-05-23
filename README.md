@@ -20,11 +20,7 @@ A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Ent
 
 **URL:** http://18.234.45.126
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@lms.com | Admin123! |
-| Instructor | instructor@lms.com | Teach123! |
-| Student | student@lms.com | Learn123! |
+Demo accounts for each role (Admin, Instructor, Student) are seeded automatically on startup. See [`Data/SeedData.cs`](Learning%20Management%20System/Data/SeedData.cs) for credentials.
 
 ## Features
 
@@ -37,7 +33,8 @@ A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Ent
 - **Dockerized deployment** — One-command setup with Docker Compose
 - **CI/CD pipeline** — Automatic build, push, and deploy on every push to `main`
 
-## Screenshots
+<details>
+<summary>Screenshots</summary>
 
 | Page | Preview |
 |------|---------|
@@ -50,6 +47,8 @@ A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Ent
 | Duplicate Warning | ![Duplicate Warning](docs/screenshots/failed.png) |
 | Grading | ![Grading](docs/screenshots/grade.png) |
 | My Grades | ![My Grades](docs/screenshots/view%20grade.png) |
+
+</details>
 
 ## Key Design Decisions
 
@@ -72,30 +71,69 @@ Learning Management System/
 ├── Views/                 # Razor views organized by controller
 ├── Data/                  # DbContext, migrations, seed data
 ├── Middleware/             # Global exception handling
-└── wwwroot/               # Static assets (CSS, JS)
-
-Dockerfile                 # Multi-stage build (SDK → runtime)
-docker-compose.yml         # App + MySQL containers
-.github/workflows/         # CI/CD pipeline
-LMS.Tests/                 # Unit tests
+├── wwwroot/               # Static assets (CSS, JS)
+├── Dockerfile             # Multi-stage build (SDK → runtime)
+├── docker-compose.yml     # App + MySQL containers
+├── .github/workflows/     # CI/CD pipeline
+└── LMS.Tests/             # Unit tests (xUnit + in-memory SQLite)
 ```
 
 ### Database Schema
 
-```
-User (ASP.NET Identity)
- ├── Instructor → Courses (one-to-many)
- └── Student → Enrollments (one-to-many)
+```mermaid
+erDiagram
+    ApplicationUser ||--o{ Course : "instructs"
+    ApplicationUser ||--o{ Enrollment : "enrolls in"
+    ApplicationUser ||--o{ Submission : "submits"
+    ApplicationUser ||--o{ Grade : "grades"
+    Course ||--o{ Assignment : has
+    Course ||--o{ Enrollment : has
+    Assignment ||--o{ Submission : has
+    Submission ||--o| Grade : has
 
-Course
- ├── Assignments (one-to-many)
- └── Enrollments (one-to-many)
-
-Assignment
- └── Submissions (one-to-many)
-
-Submission
- └── Grade (one-to-one)
+    ApplicationUser {
+        string Id PK
+        string FullName
+        string Email
+        datetime CreatedAt
+    }
+    Course {
+        int Id PK
+        string Title
+        string Description
+        string InstructorId FK
+        datetime CreatedAt
+    }
+    Assignment {
+        int Id PK
+        string Title
+        string Description
+        datetime DueDate
+        int CourseId FK
+        datetime CreatedAt
+    }
+    Enrollment {
+        int Id PK
+        string StudentId FK
+        int CourseId FK
+        datetime EnrolledAt
+    }
+    Submission {
+        int Id PK
+        string TextContent
+        string FilePath
+        string StudentId FK
+        int AssignmentId FK
+        datetime SubmittedAt
+    }
+    Grade {
+        int Id PK
+        decimal Score
+        string Feedback
+        int SubmissionId FK
+        string GradedById FK
+        datetime GradedAt
+    }
 ```
 
 ## Getting Started
@@ -141,7 +179,20 @@ The app deploys to AWS EC2 via GitHub Actions. On every push to `main`:
 | `EC2_USER` | SSH user (e.g. `ubuntu`) |
 | `EC2_SSH_KEY` | PEM private key contents |
 
-## API Routes
+## Testing
+
+```bash
+dotnet test LMS.Tests
+```
+
+Tests use **xUnit** with an **in-memory SQLite** database (no external dependencies required). Coverage includes:
+
+- `CourseServiceTests` — course CRUD, ownership, and enrollment validation
+- `AssignmentServiceTests` — assignment creation, retrieval, and authorization
+- `SubmissionServiceTests` — submission creation and duplicate handling
+- `GradeServiceTests` — grading, feedback, and duplicate grade prevention
+
+## Routes
 
 | Route | Description |
 |-------|-------------|
