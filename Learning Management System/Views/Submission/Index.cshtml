@@ -19,6 +19,7 @@ else
             <tr>
                 <th>Student</th>
                 <th>Submitted</th>
+                <th>File</th>
                 <th>Grade</th>
                 <th>Actions</th>
             </tr>
@@ -29,6 +30,16 @@ else
                 <tr>
                     <td>@s.StudentName</td>
                     <td>@s.SubmittedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                    <td>
+                        @if (s.OriginalFileName != null)
+                        {
+                            <a asp-action="Download" asp-route-id="@s.Id" title="@s.OriginalFileName">&#128206;</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
                     <td>
                         @if (s.Grade != null)
                         {

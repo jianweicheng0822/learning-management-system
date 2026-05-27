@@ -12,16 +12,17 @@
 <div class="row">
     <div class="col-md-8">
         <div asp-validation-summary="All" class="text-danger"></div>
-        <form asp-action="Create" asp-route-assignmentId="@ViewBag.AssignmentId" method="post">
+        <form asp-action="Create" asp-route-assignmentId="@ViewBag.AssignmentId" method="post" enctype="multipart/form-data">
             <div class="mb-3">
                 <label asp-for="TextContent" class="form-label">Submission Text</label>
                 <textarea asp-for="TextContent" class="form-control" rows="10" placeholder="Enter your submission text here..."></textarea>
                 <span asp-validation-for="TextContent" class="text-danger"></span>
             </div>
             <div class="mb-3">
-                <label asp-for="FilePath" class="form-label">File Path (optional)</label>
-                <input asp-for="FilePath" class="form-control" placeholder="Path to submission file" />
-                <span asp-validation-for="FilePath" class="text-danger"></span>
+                <label class="form-label">File (optional)</label>
+                <input type="file" name="file" class="form-control"
+                       accept=".pdf,.docx,.txt,.pptx,.xlsx,.py,.java,.cs,.js,.ts,.zip,.tar.gz" />
+                <div class="form-text">Allowed types: .pdf, .docx, .txt, .pptx, .xlsx, .py, .java, .cs, .js, .ts, .zip, .tar.gz — Max 25 MB</div>
             </div>
             <button type="submit" class="btn btn-primary">Submit</button>
             <a asp-controller="Assignment" asp-action="Details" asp-route-id="@ViewBag.AssignmentId" class="btn btn-secondary">Cancel</a>

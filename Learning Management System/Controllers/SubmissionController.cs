@@ -8,7 +8,8 @@ namespace LMS.Controllers;
 
 public class SubmissionController(
     ISubmissionService submissionService,
-    IAssignmentService assignmentService) : BaseController
+    IAssignmentService assignmentService,
+    IFileStorageService fileStorage) : BaseController
 {
     [Authorize(Roles = "Student")]
     [HttpGet]
@@ -27,7 +28,7 @@ public class SubmissionController(
     [Authorize(Roles = "Student")]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(int assignmentId, CreateSubmissionRequest request)
+    public async Task<IActionResult> Create(int assignmentId, CreateSubmissionRequest request, IFormFile? file)
     {
         if (!ModelState.IsValid)
         {
@@ -35,15 +36,50 @@ public class SubmissionController(
             return View(request);
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var result = await submissionService.SubmitAsync(assignmentId, userId, request);
-        return HandleResultWithFeedback(result,
-            submission =>
+        string? s3Key = null;
+        string? originalFileName = null;
+
+        if (file is { Length: > 0 })
+        {
+            var (isValid, errorMessage) = FileValidationHelper.Validate(file.FileName, file.Length);
+            if (!isValid)
             {
-                TempData["Success"] = "Assignment submitted successfully.";
-                return RedirectToAction("Details", new { id = submission.Id });
-            },
-            () => RedirectToAction("Details", "Assignment", new { id = assignmentId }));
+                TempData["Error"] = errorMessage;
+                ViewBag.AssignmentId = assignmentId;
+                return View(request);
+            }
+
+            var assignmentResult = await assignmentService.GetByIdAsync(assignmentId);
+            if (!assignmentResult.IsSuccess)
+                return HandleResult(assignmentResult, _ => View());
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            s3Key = FileValidationHelper.GenerateS3Key(assignmentResult.Value!.CourseId, assignmentId, userId, file.FileName);
+            originalFileName = file.FileName;
+
+            await using var stream = file.OpenReadStream();
+            await fileStorage.UploadAsync(stream, s3Key, file.ContentType);
+        }
+
+        try
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var result = await submissionService.SubmitAsync(assignmentId, userId, request, s3Key, originalFileName);
+            return HandleResultWithFeedback(result,
+                submission =>
+                {
+                    TempData["Success"] = "Assignment submitted successfully.";
+                    return RedirectToAction("Details", new { id = submission.Id });
+                },
+                () => RedirectToAction("Details", "Assignment", new { id = assignmentId }));
+        }
+        catch
+        {
+            // Clean up uploaded file if submission fails
+            if (s3Key != null)
+                await fileStorage.DeleteAsync(s3Key);
+            throw;
+        }
     }
 
     [Authorize(Roles = "Instructor,Admin")]
@@ -68,6 +104,16 @@ public class SubmissionController(
     {
         var result = await submissionService.GetByIdAsync(id);
         return HandleResult(result, submission => View(submission));
+    }
+
+    [Authorize]
+    public async Task<IActionResult> Download(int id)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isInstructorOrAdmin = User.IsInRole("Instructor") || User.IsInRole("Admin");
+        var result = await submissionService.GetDownloadUrlAsync(id, userId, isInstructorOrAdmin);
+
+        return HandleResult(result, url => Redirect(url));
     }
 
     [Authorize(Roles = "Student")]

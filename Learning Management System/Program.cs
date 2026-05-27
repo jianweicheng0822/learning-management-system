@@ -1,8 +1,10 @@
+using Amazon.S3;
 using LMS.Data;
 using LMS.Middleware;
 using LMS.Models;
 using LMS.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,6 +39,36 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+
+// ----- AWS S3 -----
+builder.Services.Configure<S3Settings>(builder.Configuration.GetSection("AWS:S3"));
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var config = new AmazonS3Config
+    {
+        RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(
+            builder.Configuration["AWS:S3:Region"] ?? "us-east-1")
+    };
+
+    var accessKey = builder.Configuration["AWS:AccessKeyId"];
+    var secretKey = builder.Configuration["AWS:SecretAccessKey"];
+
+    if (!string.IsNullOrEmpty(accessKey) && !string.IsNullOrEmpty(secretKey))
+        return new AmazonS3Client(accessKey, secretKey, config);
+
+    return new AmazonS3Client(config);
+});
+builder.Services.AddScoped<IFileStorageService, S3FileStorageService>();
+
+// ----- Upload size limits -----
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 25 * 1024 * 1024; // 25 MB
+});
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 30 * 1024 * 1024; // 30 MB
+});
 
 // ----- Application Services -----
 builder.Services.AddScoped<ICourseService, CourseService>();

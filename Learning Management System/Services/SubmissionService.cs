@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LMS.Services;
 
-public class SubmissionService(ApplicationDbContext db) : ISubmissionService
+public class SubmissionService(ApplicationDbContext db, IFileStorageService fileStorage) : ISubmissionService
 {
-    public async Task<ServiceResult<SubmissionDto>> SubmitAsync(int assignmentId, string studentId, CreateSubmissionRequest request)
+    public async Task<ServiceResult<SubmissionDto>> SubmitAsync(int assignmentId, string studentId, CreateSubmissionRequest request, string? s3Key = null, string? originalFileName = null)
     {
         var assignment = await db.Assignments.Include(a => a.Course).FirstOrDefaultAsync(a => a.Id == assignmentId);
         if (assignment is null)
@@ -24,15 +24,16 @@ public class SubmissionService(ApplicationDbContext db) : ISubmissionService
         if (existing)
             return ServiceResult.Failure<SubmissionDto>(ErrorType.Conflict, "You have already submitted this assignment.");
 
-        if (string.IsNullOrWhiteSpace(request.TextContent) && string.IsNullOrWhiteSpace(request.FilePath))
-            return ServiceResult.Failure<SubmissionDto>(ErrorType.ValidationError, "Submission must include text content or a file path.");
+        if (string.IsNullOrWhiteSpace(request.TextContent) && string.IsNullOrWhiteSpace(s3Key))
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.ValidationError, "Submission must include text content or a file.");
 
         var submission = new Submission
         {
             AssignmentId = assignmentId,
             StudentId = studentId,
             TextContent = request.TextContent,
-            FilePath = request.FilePath
+            FilePath = s3Key,
+            OriginalFileName = originalFileName
         };
 
         db.Submissions.Add(submission);
@@ -73,6 +74,22 @@ public class SubmissionService(ApplicationDbContext db) : ISubmissionService
         return ServiceResult.Success(paged);
     }
 
+    public async Task<ServiceResult<string>> GetDownloadUrlAsync(int submissionId, string requestingUserId, bool isInstructorOrAdmin)
+    {
+        var submission = await db.Submissions.FirstOrDefaultAsync(s => s.Id == submissionId);
+        if (submission is null)
+            return ServiceResult.Failure<string>(ErrorType.NotFound, "Submission not found.");
+
+        if (!isInstructorOrAdmin && submission.StudentId != requestingUserId)
+            return ServiceResult.Failure<string>(ErrorType.Unauthorized, "You can only download your own submissions.");
+
+        if (string.IsNullOrWhiteSpace(submission.FilePath) || string.IsNullOrWhiteSpace(submission.OriginalFileName))
+            return ServiceResult.Failure<string>(ErrorType.NotFound, "This submission has no attached file.");
+
+        var url = fileStorage.GetDownloadUrl(submission.FilePath, submission.OriginalFileName);
+        return ServiceResult.Success(url);
+    }
+
     private IQueryable<SubmissionDto> QuerySubmissions()
     {
         return db.Submissions
@@ -84,6 +101,7 @@ public class SubmissionService(ApplicationDbContext db) : ISubmissionService
                 Id = s.Id,
                 TextContent = s.TextContent,
                 FilePath = s.FilePath,
+                OriginalFileName = s.OriginalFileName,
                 SubmittedAt = s.SubmittedAt,
                 StudentId = s.StudentId,
                 StudentName = s.Student.FullName,

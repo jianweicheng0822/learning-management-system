@@ -80,13 +80,15 @@ public class TestDbHelper : IDisposable
         return assignment;
     }
 
-    public Submission CreateSubmission(string studentId, int assignmentId)
+    public Submission CreateSubmission(string studentId, int assignmentId, string? filePath = null, string? originalFileName = null)
     {
         var submission = new Submission
         {
             StudentId = studentId,
             AssignmentId = assignmentId,
-            TextContent = "Test submission content"
+            TextContent = "Test submission content",
+            FilePath = filePath,
+            OriginalFileName = originalFileName
         };
         Context.Submissions.Add(submission);
         Context.SaveChanges();

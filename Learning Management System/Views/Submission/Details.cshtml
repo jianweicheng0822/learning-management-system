@@ -17,10 +17,12 @@
             <dt class="col-sm-3">Submitted</dt>
             <dd class="col-sm-9">@Model.SubmittedAt.ToString("MMM dd, yyyy HH:mm")</dd>
 
-            @if (Model.FilePath != null)
+            @if (Model.OriginalFileName != null)
             {
                 <dt class="col-sm-3">File</dt>
-                <dd class="col-sm-9">@Model.FilePath</dd>
+                <dd class="col-sm-9">
+                    <a asp-action="Download" asp-route-id="@Model.Id">@Model.OriginalFileName</a>
+                </dd>
             }
         </dl>
     </div>

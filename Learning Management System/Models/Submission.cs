@@ -13,6 +13,9 @@ public class Submission
     [MaxLength(500)]
     public string? FilePath { get; set; }
 
+    [MaxLength(255)]
+    public string? OriginalFileName { get; set; }
+
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
 
     // Foreign keys

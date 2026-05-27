@@ -3,6 +3,13 @@ using LMS.Services;
 
 namespace LMS.Tests;
 
+public class FakeFileStorageService : IFileStorageService
+{
+    public Task<string> UploadAsync(Stream fileStream, string key, string contentType) => Task.FromResult(key);
+    public string GetDownloadUrl(string key, string originalFileName, TimeSpan? expiry = null) => $"https://s3.example.com/{key}?name={originalFileName}";
+    public Task DeleteAsync(string key) => Task.CompletedTask;
+}
+
 public class SubmissionServiceTests : IDisposable
 {
     private readonly TestDbHelper _db = new();
@@ -10,7 +17,7 @@ public class SubmissionServiceTests : IDisposable
 
     public SubmissionServiceTests()
     {
-        _sut = new SubmissionService(_db.Context);
+        _sut = new SubmissionService(_db.Context, new FakeFileStorageService());
     }
 
     [Fact]
@@ -77,6 +84,77 @@ public class SubmissionServiceTests : IDisposable
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.ValidationError, result.Error);
+    }
+
+    [Fact]
+    public async Task SubmitAsync_WithFile_StoresS3KeyAndOriginalFileName()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+
+        var request = new CreateSubmissionRequest { TextContent = "See attached" };
+        var result = await _sut.SubmitAsync(assignment.Id, student.Id, request,
+            s3Key: "courses/1/assignments/1/students/stu-1/abc.pdf",
+            originalFileName: "homework.pdf");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("courses/1/assignments/1/students/stu-1/abc.pdf", result.Value!.FilePath);
+        Assert.Equal("homework.pdf", result.Value.OriginalFileName);
+    }
+
+    [Fact]
+    public async Task GetDownloadUrlAsync_ReturnsUrl_ForOwnSubmission()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        _db.CreateSubmission(student.Id, assignment.Id, filePath: "s3/key.pdf", originalFileName: "hw.pdf");
+
+        var submission = _db.Context.Submissions.First();
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, student.Id, isInstructorOrAdmin: false);
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains("s3/key.pdf", result.Value!);
+    }
+
+    [Fact]
+    public async Task GetDownloadUrlAsync_ReturnsUnauthorized_ForOtherStudent()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student1 = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var student2 = _db.CreateUser("stu-2", "Bob", "bob@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student1.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        _db.CreateSubmission(student1.Id, assignment.Id, filePath: "s3/key.pdf", originalFileName: "hw.pdf");
+
+        var submission = _db.Context.Submissions.First();
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, student2.Id, isInstructorOrAdmin: false);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, result.Error);
+    }
+
+    [Fact]
+    public async Task GetDownloadUrlAsync_ReturnsNotFound_WhenNoFile()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        _db.CreateSubmission(student.Id, assignment.Id);
+
+        var submission = _db.Context.Submissions.First();
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, student.Id, isInstructorOrAdmin: false);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.NotFound, result.Error);
     }
 
     [Fact]
