@@ -33,11 +33,22 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/lms-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/lms-app:${{ github.sha }}
 
-  # Step 2: SSH into EC2 and pull the new image
+  # Step 2: Copy docker-compose.yml and deploy to EC2
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/opt/lms"
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         with:
