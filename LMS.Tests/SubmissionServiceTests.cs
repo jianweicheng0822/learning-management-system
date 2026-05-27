@@ -5,19 +5,26 @@ namespace LMS.Tests;
 
 public class FakeFileStorageService : IFileStorageService
 {
+    public List<string> DeletedKeys { get; } = [];
+
     public Task<string> UploadAsync(Stream fileStream, string key, string contentType) => Task.FromResult(key);
     public string GetDownloadUrl(string key, string originalFileName, TimeSpan? expiry = null) => $"https://s3.example.com/{key}?name={originalFileName}";
-    public Task DeleteAsync(string key) => Task.CompletedTask;
+    public Task DeleteAsync(string key)
+    {
+        DeletedKeys.Add(key);
+        return Task.CompletedTask;
+    }
 }
 
 public class SubmissionServiceTests : IDisposable
 {
     private readonly TestDbHelper _db = new();
+    private readonly FakeFileStorageService _fakeStorage = new();
     private readonly SubmissionService _sut;
 
     public SubmissionServiceTests()
     {
-        _sut = new SubmissionService(_db.Context, new FakeFileStorageService());
+        _sut = new SubmissionService(_db.Context, _fakeStorage);
     }
 
     [Fact]
@@ -54,7 +61,7 @@ public class SubmissionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SubmitAsync_ReturnsConflictIfAlreadySubmitted()
+    public async Task ResubmitAsync_UpdatesExistingSubmission()
     {
         var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
         var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
@@ -63,11 +70,77 @@ public class SubmissionServiceTests : IDisposable
         var assignment = _db.CreateAssignment(course.Id);
         _db.CreateSubmission(student.Id, assignment.Id);
 
-        var request = new CreateSubmissionRequest { TextContent = "Second attempt" };
+        var request = new CreateSubmissionRequest { TextContent = "Updated answer" };
+        var result = await _sut.SubmitAsync(assignment.Id, student.Id, request, s3Key: "new/file.pdf", originalFileName: "new.pdf");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Updated answer", result.Value!.TextContent);
+        Assert.Equal("new/file.pdf", result.Value.FilePath);
+        Assert.Equal("new.pdf", result.Value.OriginalFileName);
+
+        // Only one submission row should exist
+        Assert.Single(_db.Context.Submissions.Where(s => s.AssignmentId == assignment.Id && s.StudentId == student.Id));
+    }
+
+    [Fact]
+    public async Task SubmitAsync_ReturnsErrorIfPastDeadline()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id, dueDate: DateTime.UtcNow.AddDays(-1));
+
+        var request = new CreateSubmissionRequest { TextContent = "Late answer" };
         var result = await _sut.SubmitAsync(assignment.Id, student.Id, request);
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.Conflict, result.Error);
+        Assert.Contains("deadline", result.ErrorMessage!);
+    }
+
+    [Fact]
+    public async Task ResubmitAsync_ReturnsErrorIfGraded()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        var submission = _db.CreateSubmission(student.Id, assignment.Id);
+
+        _db.Context.Grades.Add(new LMS.Models.Grade
+        {
+            SubmissionId = submission.Id,
+            Score = 90,
+            Feedback = "Good",
+            GradedById = instructor.Id
+        });
+        _db.Context.SaveChanges();
+
+        var request = new CreateSubmissionRequest { TextContent = "Revised answer" };
+        var result = await _sut.SubmitAsync(assignment.Id, student.Id, request);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Conflict, result.Error);
+        Assert.Contains("graded", result.ErrorMessage!);
+    }
+
+    [Fact]
+    public async Task ResubmitAsync_DeletesOldFile()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        _db.CreateSubmission(student.Id, assignment.Id, filePath: "old/file.pdf", originalFileName: "old.pdf");
+
+        var request = new CreateSubmissionRequest { TextContent = "Updated" };
+        var result = await _sut.SubmitAsync(assignment.Id, student.Id, request, s3Key: "new/file.pdf", originalFileName: "new.pdf");
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains("old/file.pdf", _fakeStorage.DeletedKeys);
     }
 
     [Fact]

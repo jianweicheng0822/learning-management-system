@@ -1,6 +1,7 @@
 @model LMS.DTOs.CreateSubmissionRequest
 @{
     ViewData["Title"] = "Submit Assignment";
+    var existing = ViewBag.ExistingSubmission;
 }
 
 <h2>Submit Assignment</h2>
@@ -9,10 +10,23 @@
     <p class="text-muted">Assignment: @ViewBag.AssignmentTitle | Course: @ViewBag.CourseName</p>
 }
 
+@if (existing != null)
+{
+    <div class="alert alert-warning">
+        <strong>You already submitted on @existing.SubmittedAt.ToString("g").</strong>
+        Submitting again will replace your previous submission.
+        @if (!string.IsNullOrEmpty((string?)existing.OriginalFileName))
+        {
+            <br /><small>Previous file: @existing.OriginalFileName</small>
+        }
+    </div>
+}
+
 <div class="row">
     <div class="col-md-8">
         <div asp-validation-summary="All" class="text-danger"></div>
-        <form asp-action="Create" asp-route-assignmentId="@ViewBag.AssignmentId" method="post" enctype="multipart/form-data">
+        <form asp-action="Create" asp-route-assignmentId="@ViewBag.AssignmentId" method="post" enctype="multipart/form-data"
+              id="submission-form">
             <div class="mb-3">
                 <label asp-for="TextContent" class="form-label">Submission Text</label>
                 <textarea asp-for="TextContent" class="form-control" rows="10" placeholder="Enter your submission text here..."></textarea>
@@ -24,8 +38,19 @@
                        accept=".pdf,.docx,.txt,.pptx,.xlsx,.py,.java,.cs,.js,.ts,.zip,.tar.gz" />
                 <div class="form-text">Allowed types: .pdf, .docx, .txt, .pptx, .xlsx, .py, .java, .cs, .js, .ts, .zip, .tar.gz — Max 25 MB</div>
             </div>
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <button type="submit" class="btn btn-primary" id="submit-btn">Submit</button>
             <a asp-controller="Assignment" asp-action="Details" asp-route-id="@ViewBag.AssignmentId" class="btn btn-secondary">Cancel</a>
         </form>
     </div>
 </div>
+
+@if (existing != null)
+{
+    <script>
+        document.getElementById('submission-form').addEventListener('submit', function (e) {
+            if (!confirm('Are you sure you want to replace your previous submission?')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+}

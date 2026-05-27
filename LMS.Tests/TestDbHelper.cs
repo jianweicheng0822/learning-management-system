@@ -66,13 +66,13 @@ public class TestDbHelper : IDisposable
         return enrollment;
     }
 
-    public Assignment CreateAssignment(int courseId, string title = "Test Assignment")
+    public Assignment CreateAssignment(int courseId, string title = "Test Assignment", DateTime? dueDate = null)
     {
         var assignment = new Assignment
         {
             Title = title,
             Description = "Test Description",
-            DueDate = DateTime.UtcNow.AddDays(7),
+            DueDate = dueDate ?? DateTime.UtcNow.AddDays(7),
             CourseId = courseId
         };
         Context.Assignments.Add(assignment);

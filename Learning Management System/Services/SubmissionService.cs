@@ -17,15 +17,35 @@ public class SubmissionService(ApplicationDbContext db, IFileStorageService file
         var enrolled = await db.Enrollments
             .AnyAsync(e => e.CourseId == assignment.CourseId && e.StudentId == studentId);
         if (!enrolled)
-            return ServiceResult.Failure<SubmissionDto>(ErrorType.Unauthorized, "You must be enrolled in the course to submit assignments.");
-
-        var existing = await db.Submissions
-            .AnyAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId);
-        if (existing)
-            return ServiceResult.Failure<SubmissionDto>(ErrorType.Conflict, "You have already submitted this assignment.");
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.Unauthorized, "Please enroll in this course before accessing or submitting assignments.");
 
         if (string.IsNullOrWhiteSpace(request.TextContent) && string.IsNullOrWhiteSpace(s3Key))
             return ServiceResult.Failure<SubmissionDto>(ErrorType.ValidationError, "Submission must include text content or a file.");
+
+        if (assignment.DueDate <= DateTime.UtcNow)
+            return ServiceResult.Failure<SubmissionDto>(ErrorType.Conflict, "Submission is locked — the deadline has passed.");
+
+        var existing = await db.Submissions
+            .Include(s => s.Grade)
+            .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId);
+
+        if (existing is not null)
+        {
+            if (existing.Grade is not null)
+                return ServiceResult.Failure<SubmissionDto>(ErrorType.Conflict, "Submission is locked — it has already been graded.");
+
+            if (!string.IsNullOrWhiteSpace(existing.FilePath))
+                await fileStorage.DeleteAsync(existing.FilePath);
+
+            existing.TextContent = request.TextContent;
+            existing.FilePath = s3Key;
+            existing.OriginalFileName = originalFileName;
+            existing.SubmittedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+
+            var updatedDto = await QuerySubmissions().FirstAsync(s => s.Id == existing.Id);
+            return ServiceResult.Success(updatedDto);
+        }
 
         var submission = new Submission
         {
@@ -88,6 +108,12 @@ public class SubmissionService(ApplicationDbContext db, IFileStorageService file
 
         var url = fileStorage.GetDownloadUrl(submission.FilePath, submission.OriginalFileName);
         return ServiceResult.Success(url);
+    }
+
+    public async Task<SubmissionDto?> GetByStudentForAssignmentAsync(int assignmentId, string studentId)
+    {
+        return await QuerySubmissions()
+            .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId);
     }
 
     private IQueryable<SubmissionDto> QuerySubmissions()

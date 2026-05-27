@@ -21,6 +21,19 @@ public class SubmissionController(
             ViewBag.AssignmentId = assignmentId;
             ViewBag.AssignmentTitle = assignment.Title;
             ViewBag.CourseName = assignment.CourseName;
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var existingSubmission = submissionService.GetByStudentForAssignmentAsync(assignmentId, userId).Result;
+            if (existingSubmission is not null)
+            {
+                ViewBag.ExistingSubmission = new
+                {
+                    SubmittedAt = existingSubmission.SubmittedAt,
+                    OriginalFileName = existingSubmission.OriginalFileName,
+                    IsGraded = existingSubmission.Grade is not null
+                };
+            }
+
             return View(new CreateSubmissionRequest());
         });
     }
