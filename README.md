@@ -14,6 +14,7 @@ A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Ent
 | Frontend | Razor Views, Bootstrap 5 |
 | Containerization | Docker, Docker Compose |
 | CI/CD | GitHub Actions |
+| File Storage | AWS S3 (pre-signed URLs) |
 | Cloud | AWS EC2 |
 
 ## Live Demo
@@ -28,7 +29,9 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 - **Course management** — Instructors create and manage courses; students browse and enroll
 - **Assignments** — Instructors create assignments with due dates; students submit work
 - **Grading** — Instructors score submissions (0–100) with written feedback
-- **Duplicate action handling** — Friendly warnings for duplicate submissions, enrollments, and grades instead of generic error pages
+- **S3 file uploads** — Students attach files to submissions; stored in AWS S3 with pre-signed download URLs and automatic cleanup on resubmit
+- **Assignment resubmission** — Students can revise and resubmit before the deadline; locked after grading or past due
+- **Duplicate action handling** — Friendly warnings for duplicate enrollments and grades instead of generic error pages
 - **Auto-seeded demo data** — Pre-loaded courses, assignments, and users for immediate testing
 - **Dockerized deployment** — One-command setup with Docker Compose
 - **CI/CD pipeline** — Automatic build, push, and deploy on every push to `main`
@@ -44,7 +47,7 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 | Course Details | ![Course Details](docs/screenshots/CourseDetail.png) |
 | Submit Assignment | ![Submit Assignment](docs/screenshots/Submit%20Assignment.png) |
 | Successful Submission | ![Successful Submission](docs/screenshots/successful-submission.png) |
-| Duplicate Warning | ![Duplicate Warning](docs/screenshots/failed.png) |
+| Resubmission Warning | ![Resubmission Warning](docs/screenshots/failed.png) |
 | Grading | ![Grading](docs/screenshots/grade.png) |
 | My Grades | ![My Grades](docs/screenshots/view%20grade.png) |
 
@@ -59,6 +62,8 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 - **Server-side pagination** — List endpoints use a generic `PagedResult<T>` record and a `ToPagedResultAsync()` extension method on `IQueryable<T>`, pushing `Skip`/`Take` to the database rather than loading full tables into memory.
 
 - **Pomelo MySQL provider** — Chosen over Oracle's MySQL connector because Pomelo is the community-recommended EF Core provider for MySQL, with broader feature support and active maintenance for .NET 9.
+
+- **S3 file storage with interface abstraction** — File operations go through `IFileStorageService`, keeping controllers and services decoupled from AWS. The implementation (`S3FileStorageService`) uses the AWS SDK to upload, delete, and generate pre-signed download URLs (15-minute expiry). Files are organized under a hierarchical key structure (`courses/{id}/assignments/{id}/students/{id}/{uuid}.ext`). A `FileValidationHelper` enforces allowed extensions (`.pdf`, `.docx`, `.txt`, `.py`, `.java`, `.cs`, `.js`, `.ts`, `.zip`, `.tar.gz`, etc.) and a 25 MB size limit before any upload reaches S3. On EC2, credentials are resolved via IAM instance profile; locally, explicit keys can be set via configuration.
 
 ## Architecture
 
@@ -178,6 +183,9 @@ The app deploys to AWS EC2 via GitHub Actions. On every push to `main`:
 | `EC2_HOST` | EC2 public IP address |
 | `EC2_USER` | SSH user (e.g. `ubuntu`) |
 | `EC2_SSH_KEY` | PEM private key contents |
+| `AWS_ACCESS_KEY_ID` | IAM user access key for S3 |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret key for S3 |
+| `AWS_S3_BUCKET_NAME` | S3 bucket name (e.g. `lms-submissions`) |
 
 ## Testing
 
@@ -189,8 +197,9 @@ Tests use **xUnit** with an **in-memory SQLite** database (no external dependenc
 
 - `CourseServiceTests` — course CRUD, ownership, and enrollment validation
 - `AssignmentServiceTests` — assignment creation, retrieval, and authorization
-- `SubmissionServiceTests` — submission creation and duplicate handling
+- `SubmissionServiceTests` — submission creation, resubmission, deadline enforcement, and graded-lock validation
 - `GradeServiceTests` — grading, feedback, and duplicate grade prevention
+- `FileValidationHelperTests` — allowed/blocked extensions, size limits, and S3 key generation
 
 ## Routes
 
