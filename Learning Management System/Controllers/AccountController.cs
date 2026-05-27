@@ -12,7 +12,8 @@ namespace LMS.Controllers;
 // Handles user authentication (login/register/logout) and profile management
 public class AccountController(
     UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager) : Controller
+    SignInManager<ApplicationUser> signInManager,
+    ILogger<AccountController> logger) : Controller
 {
     // Show login form; redirects to home if already authenticated
     [HttpGet]
@@ -35,6 +36,7 @@ public class AccountController(
         var user = await userManager.FindByEmailAsync(model.Email);
         if (user == null)
         {
+            logger.LogWarning("Login failed — unknown email {Email}", model.Email);
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
             return View(model);
         }
@@ -42,9 +44,12 @@ public class AccountController(
         var result = await signInManager.PasswordSignInAsync(user, model.Password, isPersistent: true, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
+            logger.LogWarning("Login failed — wrong password for {Email}", model.Email);
             ModelState.AddModelError(string.Empty, "Invalid email or password.");
             return View(model);
         }
+
+        logger.LogInformation("User {UserId} ({Email}) logged in", user.Id, user.Email);
 
         if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))
             return Redirect(model.ReturnUrl);
@@ -85,6 +90,8 @@ public class AccountController(
         var result = await userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded)
         {
+            logger.LogWarning("Registration failed for {Email}: {Errors}",
+                model.Email, string.Join("; ", result.Errors.Select(e => e.Description)));
             foreach (var error in result.Errors)
                 ModelState.AddModelError(string.Empty, error.Description);
             return View(model);
@@ -92,6 +99,8 @@ public class AccountController(
 
         await userManager.AddToRoleAsync(user, model.Role);
         await signInManager.SignInAsync(user, isPersistent: true);
+
+        logger.LogInformation("User {UserId} ({Email}) registered as {Role}", user.Id, user.Email, model.Role);
 
         TempData["Success"] = "Registration successful! Welcome to LMS.";
         return RedirectToAction("Index", "Home");
@@ -102,7 +111,9 @@ public class AccountController(
     [Authorize]
     public async Task<IActionResult> Logout()
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         await signInManager.SignOutAsync();
+        logger.LogInformation("User {UserId} logged out", userId);
         return RedirectToAction("Index", "Home");
     }
 

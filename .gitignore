@@ -19,6 +19,9 @@ Thumbs.db
 *.swp
 *~
 
+## Logs
+logs/
+
 ## Deployment secrets
 .env
 *.pem

@@ -10,12 +10,14 @@ public class S3Settings
     public string Region { get; set; } = "us-east-1";
 }
 
-public class S3FileStorageService(IAmazonS3 s3Client, IOptions<S3Settings> settings) : IFileStorageService
+public class S3FileStorageService(IAmazonS3 s3Client, IOptions<S3Settings> settings, ILogger<S3FileStorageService> logger) : IFileStorageService
 {
     private readonly S3Settings _settings = settings.Value;
 
     public async Task<string> UploadAsync(Stream fileStream, string key, string contentType)
     {
+        logger.LogInformation("Uploading file {Key} ({ContentType}) to S3", key, contentType);
+
         var request = new PutObjectRequest
         {
             BucketName = _settings.BucketName,
@@ -25,6 +27,8 @@ public class S3FileStorageService(IAmazonS3 s3Client, IOptions<S3Settings> setti
         };
 
         await s3Client.PutObjectAsync(request);
+
+        logger.LogInformation("Upload complete for {Key}", key);
         return key;
     }
 
@@ -48,6 +52,7 @@ public class S3FileStorageService(IAmazonS3 s3Client, IOptions<S3Settings> setti
 
     public async Task DeleteAsync(string key)
     {
+        logger.LogInformation("Deleting file {Key} from S3", key);
         await s3Client.DeleteObjectAsync(_settings.BucketName, key);
     }
 }
