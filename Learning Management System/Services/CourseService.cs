@@ -146,6 +146,8 @@ public class CourseService(ApplicationDbContext db) : ICourseService
         return ServiceResult.Success(paged);
     }
 
+    // Subquery approach: get enrolled course IDs first, then filter via Contains.
+    // This avoids a join which would duplicate the QueryCourses() projection logic.
     public async Task<ServiceResult<PagedResult<CourseDto>>> GetEnrolledCoursesAsync(string studentId, int page = 1, int pageSize = 9)
     {
         var enrolledCourseIds = db.Enrollments

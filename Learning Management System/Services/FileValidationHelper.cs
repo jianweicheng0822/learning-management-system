@@ -33,6 +33,7 @@ public static class FileValidationHelper
         return $"courses/{courseId}/assignments/{assignmentId}/students/{studentId}/{Guid.NewGuid()}{extension}";
     }
 
+    // Path.GetExtension only returns ".gz" for .tar.gz files, so handle that edge case explicitly
     private static string GetExtension(string fileName)
     {
         if (fileName.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))

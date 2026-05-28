@@ -16,26 +16,27 @@ public class SubmissionController(
     public async Task<IActionResult> Create(int assignmentId)
     {
         var result = await assignmentService.GetByIdAsync(assignmentId);
-        return HandleResult(result, assignment =>
+        if (!result.IsSuccess)
+            return HandleResult(result, _ => View());
+
+        var assignment = result.Value!;
+        ViewBag.AssignmentId = assignmentId;
+        ViewBag.AssignmentTitle = assignment.Title;
+        ViewBag.CourseName = assignment.CourseName;
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var existingSubmission = await submissionService.GetByStudentForAssignmentAsync(assignmentId, userId);
+        if (existingSubmission is not null)
         {
-            ViewBag.AssignmentId = assignmentId;
-            ViewBag.AssignmentTitle = assignment.Title;
-            ViewBag.CourseName = assignment.CourseName;
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var existingSubmission = submissionService.GetByStudentForAssignmentAsync(assignmentId, userId).Result;
-            if (existingSubmission is not null)
+            ViewBag.ExistingSubmission = new
             {
-                ViewBag.ExistingSubmission = new
-                {
-                    SubmittedAt = existingSubmission.SubmittedAt,
-                    OriginalFileName = existingSubmission.OriginalFileName,
-                    IsGraded = existingSubmission.Grade is not null
-                };
-            }
+                SubmittedAt = existingSubmission.SubmittedAt,
+                OriginalFileName = existingSubmission.OriginalFileName,
+                IsGraded = existingSubmission.Grade is not null
+            };
+        }
 
-            return View(new CreateSubmissionRequest());
-        });
+        return View(new CreateSubmissionRequest());
     }
 
     [Authorize(Roles = "Student")]
@@ -74,6 +75,8 @@ public class SubmissionController(
             await fileStorage.UploadAsync(stream, s3Key, file.ContentType);
         }
 
+        // Upload to S3 first, then create the submission record.
+        // If the submission fails, the catch block cleans up the orphaned S3 object.
         try
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;

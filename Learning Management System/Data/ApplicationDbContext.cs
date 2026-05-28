@@ -19,7 +19,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(builder);
 
-        // Course -> Instructor (many-to-one)
+        // Course -> Instructor: Restrict prevents orphaned courses when an instructor is deleted.
+        // Courses must be reassigned or deleted explicitly before removing an instructor.
         builder.Entity<Course>()
             .HasOne(c => c.Instructor)
             .WithMany(u => u.InstructedCourses)
@@ -71,6 +72,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey<Grade>(g => g.SubmissionId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Grade -> GradedBy: Restrict preserves the grading audit trail.
+        // Grades must be reassigned before an instructor/admin account can be deleted.
         builder.Entity<Grade>()
             .HasOne(g => g.GradedBy)
             .WithMany()

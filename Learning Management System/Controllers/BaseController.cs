@@ -21,6 +21,8 @@ public abstract class BaseController : Controller
         return ErrorResult(result);
     }
 
+    // Conflict/ValidationError are user-facing recoverable errors — redirect with TempData message
+    // so the user stays on the form. Other errors (NotFound, Unauthorized) get a dedicated error page.
     protected IActionResult HandleResultWithFeedback<T>(
         ServiceResult<T> result,
         Func<T, IActionResult> onSuccess,
@@ -55,6 +57,7 @@ public abstract class BaseController : Controller
         return ErrorResult(result);
     }
 
+    // Maps service-layer error types to HTTP status codes for the generic error page
     private IActionResult ErrorResult(ServiceResult result)
     {
         var statusCode = result.Error switch

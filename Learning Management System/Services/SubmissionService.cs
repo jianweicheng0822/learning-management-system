@@ -8,6 +8,8 @@ namespace LMS.Services;
 
 public class SubmissionService(ApplicationDbContext db, IFileStorageService fileStorage) : ISubmissionService
 {
+    // Upsert flow: validate enrollment/deadline → find existing submission → update or create.
+    // Uses <= for deadline check so submissions at the exact deadline second are rejected.
     public async Task<ServiceResult<SubmissionDto>> SubmitAsync(int assignmentId, string studentId, CreateSubmissionRequest request, string? s3Key = null, string? originalFileName = null)
     {
         var assignment = await db.Assignments.Include(a => a.Course).FirstOrDefaultAsync(a => a.Id == assignmentId);
@@ -34,6 +36,7 @@ public class SubmissionService(ApplicationDbContext db, IFileStorageService file
             if (existing.Grade is not null)
                 return ServiceResult.Failure<SubmissionDto>(ErrorType.Conflict, "Submission is locked — it has already been graded.");
 
+            // Delete old file from S3 before overwriting to avoid orphaned objects
             if (!string.IsNullOrWhiteSpace(existing.FilePath))
                 await fileStorage.DeleteAsync(existing.FilePath);
 
@@ -110,6 +113,7 @@ public class SubmissionService(ApplicationDbContext db, IFileStorageService file
         return ServiceResult.Success(url);
     }
 
+    // Returns raw DTO (not ServiceResult) for internal controller use when populating view data
     public async Task<SubmissionDto?> GetByStudentForAssignmentAsync(int assignmentId, string studentId)
     {
         return await QuerySubmissions()

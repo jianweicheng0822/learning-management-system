@@ -91,6 +91,7 @@ public class GradeService(ApplicationDbContext db) : IGradeService
         return ServiceResult.Success(paged);
     }
 
+    // Only includes graded submissions; returns null if no submissions have been graded yet
     public async Task<decimal?> GetAverageScoreAsync(string studentId, int courseId)
     {
         var scores = await db.Submissions
