@@ -130,28 +130,28 @@ erDiagram
         string Id PK
         string FullName
         string Email
-        datetime CreatedAt
+        string CreatedAt
     }
     Course {
         int Id PK
         string Title
         string Description
         string InstructorId FK
-        datetime CreatedAt
+        string CreatedAt
     }
     Assignment {
         int Id PK
         string Title
         string Description
-        datetime DueDate
+        string DueDate
         int CourseId FK
-        datetime CreatedAt
+        string CreatedAt
     }
     Enrollment {
         int Id PK
         string StudentId FK
         int CourseId FK
-        datetime EnrolledAt
+        string EnrolledAt
     }
     Submission {
         int Id PK
@@ -159,15 +159,15 @@ erDiagram
         string FilePath
         string StudentId FK
         int AssignmentId FK
-        datetime SubmittedAt
+        string SubmittedAt
     }
     Grade {
         int Id PK
-        decimal Score
+        float Score
         string Feedback
         int SubmissionId FK
         string GradedById FK
-        datetime GradedAt
+        string GradedAt
     }
 ```
 
