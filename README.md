@@ -1,6 +1,23 @@
 # Learning Management System (LMS)
 
-A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Entity Framework Core**, and **MySQL**. Supports three user roles — Admin, Instructor, and Student — each with dedicated dashboards and role-based access control.
+![.NET](https://img.shields.io/badge/.NET%209-512BD4?style=flat&logo=dotnet&logoColor=white)
+![C#](https://img.shields.io/badge/C%23-239120?style=flat&logo=csharp&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat&logo=mysql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat&logo=amazonwebservices&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
+![Bootstrap](https://img.shields.io/badge/Bootstrap%205-7952B3?style=flat&logo=bootstrap&logoColor=white)
+![xUnit](https://img.shields.io/badge/xUnit-512BD4?style=flat&logo=dotnet&logoColor=white)
+
+A full-stack, cloud-deployed Learning Management System built with **ASP.NET Core 9 MVC**, **Entity Framework Core**, and **MySQL**. Supports role-based access for Admins, Instructors, and Students — with CI/CD, S3 file storage, structured logging, and a comprehensive test suite.
+
+### Highlights
+
+- **Result pattern** for explicit error handling — no exception-driven control flow
+- **AWS S3 integration** with pre-signed URLs, file validation, and automatic cleanup on resubmit
+- **CI/CD pipeline** via GitHub Actions — auto-builds, pushes to Docker Hub, and deploys to EC2
+- **Server-side pagination** using a generic `PagedResult<T>` pushed down to the database
+- **Unit tests** with xUnit and in-memory SQLite covering all service-layer logic
 
 ## Tech Stack
 
@@ -12,6 +29,8 @@ A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Ent
 | Authentication | ASP.NET Identity, cookie-based sessions |
 | Authorization | Role-based (Admin, Instructor, Student) |
 | Frontend | Razor Views, Bootstrap 5 |
+| Logging | Serilog (structured logging to console + file sinks) |
+| Testing | xUnit, SQLite in-memory |
 | Containerization | Docker, Docker Compose |
 | CI/CD | GitHub Actions |
 | File Storage | AWS S3 (pre-signed URLs) |
@@ -25,16 +44,25 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 
 ## Features
 
-- **Role-based access control** — Three distinct roles with different permissions and views
-- **Course management** — Instructors create and manage courses; students browse and enroll
-- **Assignments** — Instructors create assignments with due dates; students submit work
-- **Grading** — Instructors score submissions (0–100) with written feedback
-- **S3 file uploads** — Students attach files to submissions; stored in AWS S3 with pre-signed download URLs and automatic cleanup on resubmit
+### Course Management
+
+- **Role-based access control** — Three distinct roles with dedicated dashboards and permissions
+- **Course CRUD** — Instructors create and manage courses; students browse and enroll
+- **Duplicate enrollment handling** — Friendly warnings instead of generic error pages
+
+### Submissions & Grading
+
+- **Assignments with deadlines** — Instructors create assignments with due dates; students submit work
+- **S3 file uploads** — Files stored in AWS S3 with pre-signed download URLs (15-min expiry) and automatic cleanup on resubmit
 - **Assignment resubmission** — Students can revise and resubmit before the deadline; locked after grading or past due
-- **Duplicate action handling** — Friendly warnings for duplicate enrollments and grades instead of generic error pages
+- **Grading with upsert pattern** — Instructors score submissions (0-100) with written feedback; duplicate grade attempts handled gracefully
+
+### Infrastructure
+
 - **Auto-seeded demo data** — Pre-loaded courses, assignments, and users for immediate testing
 - **Dockerized deployment** — One-command setup with Docker Compose
-- **CI/CD pipeline** — Automatic build, push, and deploy on every push to `main`
+- **CI/CD pipeline** — Automatic build, push, and deploy to EC2 on every push to `main`
+- **Structured logging** — Serilog with console and rolling-file sinks for production diagnostics
 
 <details>
 <summary>Screenshots</summary>
@@ -53,17 +81,19 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 
 </details>
 
-## Key Design Decisions
+## Architecture & Design Decisions
 
-- **Result pattern over exceptions** — Service methods return `ServiceResult<T>` instead of throwing exceptions for expected errors (not found, unauthorized, duplicate). This replaces exception-driven control flow with explicit success/failure paths, making error handling predictable and testable. A global `ExceptionHandlingMiddleware` still catches truly unexpected failures as a safety net.
+**Result pattern over exceptions** — Service methods return `ServiceResult<T>` instead of throwing exceptions for expected errors (not found, unauthorized, duplicate). This replaces exception-driven control flow with **explicit success/failure paths**, making error handling predictable and testable. A global `ExceptionHandlingMiddleware` still catches truly unexpected failures as a safety net.
 
-- **Service layer with dependency inversion** — Controllers depend on service interfaces (`ICourseService`, `IAssignmentService`, etc.), not implementations. All business logic lives in the service layer; controllers only handle HTTP concerns and map `ServiceResult` outcomes to views. A shared `BaseController.HandleResult<T>()` method standardizes this mapping across all controllers.
+**Service layer with dependency inversion** — Controllers depend on **service interfaces** (`ICourseService`, `IAssignmentService`, etc.), not implementations. All business logic lives in the service layer; controllers only handle HTTP concerns and map `ServiceResult` outcomes to views. A shared `BaseController.HandleResult<T>()` method standardizes this mapping across all controllers.
 
-- **Server-side pagination** — List endpoints use a generic `PagedResult<T>` record and a `ToPagedResultAsync()` extension method on `IQueryable<T>`, pushing `Skip`/`Take` to the database rather than loading full tables into memory.
+**Server-side pagination** — List endpoints use a generic `PagedResult<T>` record and a `ToPagedResultAsync()` **extension method on `IQueryable<T>`**, pushing `Skip`/`Take` to the database rather than loading full tables into memory.
 
-- **Pomelo MySQL provider** — Chosen over Oracle's MySQL connector because Pomelo is the community-recommended EF Core provider for MySQL, with broader feature support and active maintenance for .NET 9.
+**S3 file storage with interface abstraction** — File operations go through `IFileStorageService`, keeping controllers and services **decoupled from AWS**. The implementation (`S3FileStorageService`) uses the AWS SDK to upload, delete, and generate pre-signed download URLs (15-min expiry). Files are organized under a hierarchical key structure (`courses/{id}/assignments/{id}/students/{id}/{uuid}.ext`). A `FileValidationHelper` enforces allowed extensions and a 25 MB size limit before any upload reaches S3. On EC2, credentials resolve via IAM instance profile; locally, explicit keys can be set via configuration.
 
-- **S3 file storage with interface abstraction** — File operations go through `IFileStorageService`, keeping controllers and services decoupled from AWS. The implementation (`S3FileStorageService`) uses the AWS SDK to upload, delete, and generate pre-signed download URLs (15-minute expiry). Files are organized under a hierarchical key structure (`courses/{id}/assignments/{id}/students/{id}/{uuid}.ext`). A `FileValidationHelper` enforces allowed extensions (`.pdf`, `.docx`, `.txt`, `.py`, `.java`, `.cs`, `.js`, `.ts`, `.zip`, `.tar.gz`, etc.) and a 25 MB size limit before any upload reaches S3. On EC2, credentials are resolved via IAM instance profile; locally, explicit keys can be set via configuration.
+**Structured logging with Serilog** — Replaced the default logging provider with Serilog for **structured, queryable logs**. Console and rolling-file sinks capture request context for production diagnostics.
+
+**Pomelo MySQL provider** — Chosen over Oracle's MySQL connector because Pomelo is the community-recommended EF Core provider for MySQL, with broader feature support and active maintenance for .NET 9.
 
 ## Architecture
 
