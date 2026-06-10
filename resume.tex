@@ -48,7 +48,7 @@ Bachelor of Science in Computer Science
 
 \textbf{Databases:} PostgreSQL, MySQL, Redis
 
-\textbf{Cloud \& DevOps:} AWS (EC2, S3), Docker, GitHub Actions
+\textbf{Cloud \& DevOps:} AWS (EC2, S3), Docker, Nginx, GitHub Actions
 
 \textbf{Testing \& Tools:} JUnit 5, xUnit, Mockito, Testcontainers, JaCoCo, Git, Maven, Swagger/OpenAPI, Postman
 \end{rSection}
@@ -87,7 +87,7 @@ Bachelor of Science in Computer Science
 \textbf{Learning Management System}
 \textbar\ \href{https://github.com/jianweicheng0822/learning-management-system}{GitHub}
 \textbar\ \href{https://lumis.software}{Live Demo}
-\hfill {\em May 2026}
+\hfill {\em May 2026 -- Present}
 
 \begin{itemize}
 \itemsep -3.5pt
@@ -103,7 +103,9 @@ Bachelor of Science in Computer Science
 
 \item Integrated \textbf{AWS S3} for assignment file uploads with \textbf{pre-signed download URLs} (15-min expiry), server-side file validation (extension whitelist, 25 MB limit), and a hierarchical key structure (\texttt{courses/\{id\}/assignments/\{id\}/students/\{id\}/\{uuid\}}) for organized storage.
 
-\item Containerized the app with a multi-stage \textbf{Docker} build and \textbf{Docker Compose} to orchestrate the app and \textbf{MySQL} containers with health-check gating and persistent volumes, and automated CI/CD via \textbf{GitHub Actions} to push to \textbf{Docker Hub} and deploy to \textbf{AWS EC2} over SSH.
+\item Containerized the app with a multi-stage \textbf{Docker} build and \textbf{Docker Compose} to orchestrate the app and \textbf{MySQL} containers with health-check gating and persistent volumes.
+
+\item Automated CI/CD with \textbf{GitHub Actions} to build, push to \textbf{Docker Hub}, and deploy to \textbf{AWS EC2} over SSH, with \textbf{Nginx} reverse proxy and \textbf{Let's Encrypt} TLS termination in production.
 
 \end{itemize}
 
