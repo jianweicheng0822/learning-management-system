@@ -38,7 +38,7 @@ A full-stack, cloud-deployed Learning Management System built with **ASP.NET Cor
 
 ## Live Demo
 
-**URL:** http://18.234.45.126
+**URL:** https://lumis.software
 
 Demo accounts for each role (Admin, Instructor, Student) are seeded automatically on startup. See [`Data/SeedData.cs`](Learning%20Management%20System/Data/SeedData.cs) for credentials.
 
@@ -198,9 +198,11 @@ The app auto-runs migrations and seeds demo data on startup when `SEED_DEMO_DATA
 
 ## Deployment
 
-The app deploys to AWS EC2 via GitHub Actions. On every push to `main`:
+The app runs on AWS EC2 behind an **Nginx reverse proxy** that handles TLS termination with a **Let's Encrypt** certificate. Nginx listens on ports 80 and 443, redirects all HTTP traffic to HTTPS, and proxies requests to the Docker container on port 8080.
 
-1. GitHub Actions builds a Docker image and pushes it to Docker Hub
+On every push to `main`, GitHub Actions:
+
+1. Builds a Docker image and pushes it to Docker Hub
 2. SSHs into EC2 and pulls the new image
 3. Restarts the app container (MySQL data persists across deploys)
 
