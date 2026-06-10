@@ -1,0 +1,120 @@
+\documentclass{resume}
+
+\usepackage[left=0.5in,top=0.3in,right=0.5in,bottom=0.25in]{geometry}
+\usepackage[dvipsnames]{xcolor}
+
+% --- Color ---
+\definecolor{VibrantBlue}{RGB}{65,105,225}
+
+\usepackage[
+colorlinks=true,
+linkcolor=VibrantBlue,
+urlcolor=VibrantBlue,
+pdfborder={0 0 0}
+]{hyperref}
+
+\usepackage{fontawesome}
+\usepackage{times}
+
+\linespread{0.92} %
+
+\name{Jianwei Cheng}
+
+\address{
+\faMapMarker\ Salt Lake City, UT \hspace{0.2em}
+\faPhone\ (801) 462-7095 \hspace{0.2em}
+\faEnvelope\ \href{mailto:jianweicheng0822@gmail.com}{jianweicheng0822@gmail.com} \hspace{0.2em}
+\faLinkedin\ \href{https://www.linkedin.com/in/jianwei-cheng/}{linkedin.com/in/jianwei-cheng} \hspace{0.2em}
+\faGithub\ \href{https://github.com/jianweicheng0822}{github.com/jianweicheng0822}
+}
+
+\begin{document}
+
+%-----------------------------------------------------------
+\begin{rSection}{Education}
+\vspace{-0.3em}
+\textbf{University of Utah} \hfill May 2024 \\
+Bachelor of Science in Computer Science
+\end{rSection}
+
+%-----------------------------------------------------------
+\begin{rSection}{Skills}
+\vspace{-0.3em}
+\textbf{Languages:} Java, C\#, TypeScript, SQL, HTML/CSS
+
+\textbf{Backend:} Spring Boot, ASP.NET Core MVC
+
+\textbf{Frontend:} React, HTML, CSS, Bootstrap
+
+\textbf{Databases:} PostgreSQL, MySQL, Redis
+
+\textbf{Cloud \& DevOps:} AWS (EC2, S3), Docker, GitHub Actions
+
+\textbf{Testing \& Tools:} JUnit 5, xUnit, Mockito, Testcontainers, JaCoCo, Git, Maven, Swagger/OpenAPI, Postman
+\end{rSection}
+
+%-----------------------------------------------------------
+\begin{rSection}{Projects}
+\vspace{-0.3em}
+
+%----------------- LoL Tracker -----------------
+\textbf{League of Legends Match Analytics Platform}
+\textbar\ \href{https://github.com/jianweicheng0822/lol-tracker}{GitHub}
+\textbar\ \href{http://3.84.122.22}{Live Demo}
+\hfill {\em Jan 2026 -- Present}
+
+\begin{itemize}
+\itemsep -3.5pt
+\parsep 0pt
+
+\item Built a full-stack analytics platform (\textbf{Spring Boot}, \textbf{React 18}, \textbf{PostgreSQL}, \textbf{Redis}) that integrates with five Riot Games API endpoints to display match history, ranked stats, and AI coaching.
+
+\item Implemented real-time AI coaching by streaming GPT-4o-mini responses via \textbf{Spring WebFlux} and \textbf{Server-Sent Events (SSE)}, with prompts constructed server-side from structured match data.
+
+\item Parallelized Riot API match-detail fetches with \textbf{CompletableFuture} (\textbf{6-thread pool}) to reduce page load times for batches of up to 20 matches.
+
+\item Configured \textbf{Redis} as a distributed cache with per-endpoint TTLs (\textbf{30s--24h}) to stay within Riot API rate limits and persist cache across container restarts.
+
+\item Secured the API with stateless \textbf{JWT} authentication (HS256, BCrypt) and an in-memory sliding-window rate limiter, with FREE/PRO tiers controlling match limits and AI access.
+
+\item Achieved \textbf{79\% line coverage} across 181 tests (\textbf{JUnit 5}, \textbf{Mockito}, \textbf{Testcontainers}) with a \textbf{JaCoCo} gate enforcing 70\% minimum on every build.
+
+\item Automated CI/CD with \textbf{GitHub Actions} --- lint, test, build a multi-stage \textbf{Docker} image, push to GHCR, and deploy to \textbf{AWS EC2} via SSH with health-check verification.
+
+\end{itemize}
+
+%----------------- LMS -----------------
+\textbf{Learning Management System}
+\textbar\ \href{https://github.com/jianweicheng0822/learning-management-system}{GitHub}
+\textbar\ \href{https://lumis.software}{Live Demo}
+\hfill {\em May 2026}
+
+\begin{itemize}
+\itemsep -3.5pt
+\parsep 0pt
+
+\item Built a full-stack course management platform (\textbf{ASP.NET Core MVC}, \textbf{Entity Framework Core}, \textbf{MySQL}) with role-based workflows for instructors, students, and admins across \textbf{32 Razor views} and \textbf{36 route actions}.
+
+\item Implemented cookie-based authentication with \textbf{ASP.NET Identity} and \textbf{role-based authorization (RBAC)}, restricting course creation to instructors, grading to course owners, and enrollment to students.
+
+\item Architected a service-layer pattern with \textbf{dependency injection} and \textbf{17 DTO/result types} to separate domain models from view contracts, keeping controllers thin and business logic testable.
+
+\item Replaced exception-driven control flow with a \textbf{Result pattern} (ServiceResult$\langle$T$\rangle$), mapping typed errors (NotFound, Unauthorized, Conflict) to HTTP status codes via a BaseController helper, with global exception-handling middleware as a safety net for unhandled failures.
+
+\item Integrated \textbf{AWS S3} for assignment file uploads with \textbf{pre-signed download URLs} (15-min expiry), server-side file validation (extension whitelist, 25 MB limit), and a hierarchical key structure (\texttt{courses/\{id\}/assignments/\{id\}/students/\{id\}/\{uuid\}}) for organized storage.
+
+\item Containerized the app with a multi-stage \textbf{Docker} build and \textbf{Docker Compose} to orchestrate the app and \textbf{MySQL} containers with health-check gating and persistent volumes, and automated CI/CD via \textbf{GitHub Actions} to push to \textbf{Docker Hub} and deploy to \textbf{AWS EC2} over SSH.
+
+\end{itemize}
+
+\end{rSection}
+
+%-----------------------------------------------------------
+\begin{rSection}{Certifications}
+\vspace{-0.3em}
+\textbf{Amazon Junior Software Developer Professional Certificate} \hfill {\em Jan 2026} \\
+Amazon (Coursera) \hfill \href{https://www.coursera.org/account/accomplishments/professional-cert/4AW9FQF6E10D}{Verify Credential}
+\end{rSection}
+
+%-----------------------------------------------------------
+\end{document}
