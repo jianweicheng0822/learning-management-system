@@ -25,8 +25,13 @@ try
 
     // ----- Database -----
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+    var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+        options.UseMySql(connectionString, serverVersion, mySqlOptions =>
+            mySqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 10,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null)));
 
     // ----- Identity -----
     builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -134,26 +139,40 @@ try
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}");
 
-    // ----- Database Migration & Seeding -----
-    using (var scope = app.Services.CreateScope())
+    // ----- Database Migration & Seeding (with retry) -----
+    var retryCount = 0;
+    const int maxRetries = 10;
+    while (true)
     {
-        var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<ApplicationDbContext>();
-
-        await db.Database.MigrateAsync();
-
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        string[] roles = ["Admin", "Instructor", "Student"];
-
-        foreach (var role in roles)
+        try
         {
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(new IdentityRole(role));
+            using var scope = app.Services.CreateScope();
+            var services = scope.ServiceProvider;
+            var db = services.GetRequiredService<ApplicationDbContext>();
+
+            await db.Database.MigrateAsync();
+
+            var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+            string[] roles = ["Admin", "Instructor", "Student"];
+
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                    await roleManager.CreateAsync(new IdentityRole(role));
+            }
+
+            if (builder.Configuration["SEED_DEMO_DATA"] == "true")
+            {
+                await SeedData.InitializeAsync(services);
+            }
+
+            break;
         }
-
-        if (builder.Configuration["SEED_DEMO_DATA"] == "true")
+        catch (MySqlConnector.MySqlException) when (retryCount < maxRetries)
         {
-            await SeedData.InitializeAsync(services);
+            retryCount++;
+            Log.Warning("Database not ready, retrying ({RetryCount}/{MaxRetries})...", retryCount, maxRetries);
+            await Task.Delay(TimeSpan.FromSeconds(5));
         }
     }
 
