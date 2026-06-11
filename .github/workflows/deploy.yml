@@ -48,6 +48,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "docker-compose.yml"
           target: "/opt/lms"
+          overwrite: true
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
@@ -57,6 +58,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /opt/lms
+            export DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/lms-app:latest
             docker compose pull lms-app
             docker compose up -d --force-recreate lms-app
             # Clean up old images to reclaim disk space
