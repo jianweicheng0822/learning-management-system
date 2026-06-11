@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-DOMAIN="your-domain.com"
+DOMAIN="lumis.software"
 APP_DIR="/var/www/lms"
 SERVICE_NAME="lms"
 PROJECT_DIR="Learning Management System"
