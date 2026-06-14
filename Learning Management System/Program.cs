@@ -6,8 +6,10 @@ using LMS.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Threading.RateLimiting;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -97,6 +99,20 @@ try
     builder.Services.AddScoped<ISubmissionService, SubmissionService>();
     builder.Services.AddScoped<IGradeService, GradeService>();
 
+    // ----- Rate Limiting -----
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 100,
+                    Window = TimeSpan.FromMinutes(1)
+                }));
+    });
+
     // ----- MVC -----
     builder.Services.AddControllersWithViews();
 
@@ -105,6 +121,7 @@ try
     // ----- Middleware Pipeline -----
     app.UseSerilogRequestLogging();
     app.UseMiddleware<ExceptionHandlingMiddleware>();
+    app.UseRateLimiter();
 
     if (app.Environment.IsDevelopment())
     {
