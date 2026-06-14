@@ -11,8 +11,10 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    mem_limit: 256m
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./Deployment/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
     # Health check ensures the app container waits until MySQL is ready
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
