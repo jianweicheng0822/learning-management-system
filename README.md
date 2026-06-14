@@ -62,7 +62,9 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 - **Auto-seeded demo data** — Pre-loaded courses, assignments, and users for immediate testing
 - **Dockerized deployment** — One-command setup with Docker Compose
 - **CI/CD pipeline** — Automatic build, push, and deploy to EC2 on every push to `main`
-- **Structured logging** — Serilog with console and rolling-file sinks for production diagnostics
+- **Rate limiting** — Fixed-window rate limiter (100 requests/min per IP) to prevent abuse
+- **Memory-optimized MySQL** — Custom `my.cnf` with tuned buffer pool, connection limits, and disabled performance schema for low-memory instances
+- **Structured logging** — Serilog with console and rolling-file sinks (7-day retention) for production diagnostics
 
 <details>
 <summary>Screenshots</summary>
@@ -108,8 +110,9 @@ Learning Management System/
 ├── Middleware/             # Global exception handling
 ├── wwwroot/               # Static assets (CSS, JS)
 ├── Dockerfile             # Multi-stage build (SDK → runtime)
-├── docker-compose.yml     # App + MySQL containers
-├── .github/workflows/     # CI/CD pipeline
+├── Deployment/            # MySQL config (my.cnf), Nginx, deploy scripts
+├── docker-compose.yml     # App + MySQL containers with memory limits
+├── .github/workflows/     # CI/CD pipeline (build, swap setup, deploy)
 └── LMS.Tests/             # Unit tests (xUnit + in-memory SQLite)
 ```
 
@@ -203,8 +206,9 @@ The app runs on AWS EC2 behind an **Nginx reverse proxy** that handles TLS termi
 On every push to `main`, GitHub Actions:
 
 1. Builds a Docker image and pushes it to Docker Hub
-2. SSHs into EC2 and pulls the new image
-3. Restarts the app container (MySQL data persists across deploys)
+2. SSHs into EC2 and ensures a 2 GB swap file exists (OOM safety net)
+3. Copies `docker-compose.yml` and MySQL config to the server
+4. Pulls the new image and restarts the app container (MySQL data persists across deploys)
 
 ### Required GitHub Secrets
 
