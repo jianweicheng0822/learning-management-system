@@ -32,43 +32,40 @@ public class CourseService(ApplicationDbContext db) : ICourseService
 
     public async Task<ServiceResult<CourseDetailDto>> GetByIdAsync(int id)
     {
-        var course = await db.Courses
-            .Include(c => c.Instructor)
-            .Include(c => c.Enrollments).ThenInclude(e => e.Student)
-            .Include(c => c.Assignments).ThenInclude(a => a.Submissions)
-            .FirstOrDefaultAsync(c => c.Id == id);
+        var dto = await db.Courses
+            .Where(c => c.Id == id)
+            .Select(c => new CourseDetailDto
+            {
+                Id = c.Id,
+                Title = c.Title,
+                Description = c.Description,
+                InstructorId = c.InstructorId,
+                InstructorName = c.Instructor.FullName,
+                EnrolledCount = c.Enrollments.Count,
+                CreatedAt = c.CreatedAt,
+                EnrolledStudents = c.Enrollments.Select(e => new EnrolledStudentDto
+                {
+                    StudentId = e.StudentId,
+                    FullName = e.Student.FullName,
+                    Email = e.Student.Email!,
+                    EnrolledAt = e.EnrolledAt
+                }).ToList(),
+                Assignments = c.Assignments.Select(a => new AssignmentDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    Description = a.Description,
+                    DueDate = a.DueDate,
+                    CourseId = a.CourseId,
+                    CourseName = c.Title,
+                    SubmissionCount = a.Submissions.Count,
+                    CreatedAt = a.CreatedAt
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
 
-        if (course is null)
+        if (dto is null)
             return ServiceResult.Failure<CourseDetailDto>(ErrorType.NotFound, "Course not found.");
-
-        var dto = new CourseDetailDto
-        {
-            Id = course.Id,
-            Title = course.Title,
-            Description = course.Description,
-            InstructorId = course.InstructorId,
-            InstructorName = course.Instructor.FullName,
-            EnrolledCount = course.Enrollments.Count,
-            CreatedAt = course.CreatedAt,
-            EnrolledStudents = course.Enrollments.Select(e => new EnrolledStudentDto
-            {
-                StudentId = e.StudentId,
-                FullName = e.Student.FullName,
-                Email = e.Student.Email!,
-                EnrolledAt = e.EnrolledAt
-            }).ToList(),
-            Assignments = course.Assignments.Select(a => new AssignmentDto
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Description = a.Description,
-                DueDate = a.DueDate,
-                CourseId = a.CourseId,
-                CourseName = course.Title,
-                SubmissionCount = a.Submissions.Count,
-                CreatedAt = a.CreatedAt
-            }).ToList()
-        };
 
         return ServiceResult.Success(dto);
     }
