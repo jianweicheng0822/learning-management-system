@@ -1,12 +1,11 @@
-# CI/CD pipeline: build Docker image on push to main, then deploy to EC2
-name: Build & Deploy
+# CI/CD pipeline: build Docker image on push to main, push to Docker Hub
+name: Build & Push
 
 on:
   push:
     branches: [main]
 
 jobs:
-  # Step 1: Build the Docker image and push it to Docker Hub
   build-and-push:
     runs-on: ubuntu-latest
     steps:
@@ -32,49 +31,3 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/lms-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/lms-app:${{ github.sha }}
-
-  # Step 2: Copy docker-compose.yml and deploy to EC2
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Copy compose and config files to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,Deployment/mysql/my.cnf"
-          target: "/opt/lms"
-          overwrite: true
-
-      - name: Ensure swap space exists
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            if [ ! -f /swapfile ]; then
-              sudo fallocate -l 2G /swapfile
-              sudo chmod 600 /swapfile
-              sudo mkswap /swapfile
-              sudo swapon /swapfile
-              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-            fi
-
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /opt/lms
-            export DOCKER_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/lms-app:latest
-            docker compose pull lms-app
-            docker compose up -d --force-recreate lms-app
-            # Clean up old images to reclaim disk space
-            docker image prune -f
