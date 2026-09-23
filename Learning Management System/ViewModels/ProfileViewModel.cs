@@ -15,4 +15,5 @@ public class ProfileViewModel
     public string Email { get; set; } = string.Empty;
 
     public IList<string> Roles { get; set; } = [];
+
 }

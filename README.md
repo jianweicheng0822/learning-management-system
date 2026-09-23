@@ -4,18 +4,16 @@
 ![C#](https://img.shields.io/badge/C%23-239120?style=flat&logo=csharp&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat&logo=mysql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
-![AWS](https://img.shields.io/badge/AWS-232F3E?style=flat&logo=amazonwebservices&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap%205-7952B3?style=flat&logo=bootstrap&logoColor=white)
 ![xUnit](https://img.shields.io/badge/xUnit-512BD4?style=flat&logo=dotnet&logoColor=white)
 
-A full-stack, cloud-deployed Learning Management System built with **ASP.NET Core 9 MVC**, **Entity Framework Core**, and **MySQL**. Supports role-based access for Admins, Instructors, and Students — with CI/CD, S3 file storage, structured logging, and a comprehensive test suite.
+A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Entity Framework Core**, and **MySQL**. Supports role-based access for Admins, Instructors, and Students — with CI/CD, structured logging, and a comprehensive test suite.
 
 ### Highlights
 
 - **Result pattern** for explicit error handling — no exception-driven control flow
-- **AWS S3 integration** with pre-signed URLs, file validation, and automatic cleanup on resubmit
-- **CI/CD pipeline** via GitHub Actions — auto-builds, pushes to Docker Hub, and deploys to EC2
+- **CI/CD pipeline** via GitHub Actions — auto-builds and pushes to Docker Hub
 - **Server-side pagination** using a generic `PagedResult<T>` pushed down to the database
 - **Unit tests** with xUnit and in-memory SQLite covering all service-layer logic
 
@@ -33,12 +31,8 @@ A full-stack, cloud-deployed Learning Management System built with **ASP.NET Cor
 | Testing | xUnit, SQLite in-memory |
 | Containerization | Docker, Docker Compose |
 | CI/CD | GitHub Actions |
-| File Storage | AWS S3 (pre-signed URLs) |
-| Cloud | AWS EC2 |
 
-## Live Demo
-
-**URL:** https://lumis.software
+## Demo
 
 Demo accounts for each role (Admin, Instructor, Student) are seeded automatically on startup. See [`Data/SeedData.cs`](Learning%20Management%20System/Data/SeedData.cs) for credentials.
 
@@ -53,7 +47,6 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 ### Submissions & Grading
 
 - **Assignments with deadlines** — Instructors create assignments with due dates; students submit work
-- **S3 file uploads** — Files stored in AWS S3 with pre-signed download URLs (15-min expiry) and automatic cleanup on resubmit
 - **Assignment resubmission** — Students can revise and resubmit before the deadline; locked after grading or past due
 - **Grading with upsert pattern** — Instructors score submissions (0-100) with written feedback; duplicate grade attempts handled gracefully
 
@@ -61,9 +54,9 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 
 - **Auto-seeded demo data** — Pre-loaded courses, assignments, and users for immediate testing
 - **Dockerized deployment** — One-command setup with Docker Compose
-- **CI/CD pipeline** — Automatic build, push, and deploy to EC2 on every push to `main`
+- **CI/CD pipeline** — Automatic build and push to Docker Hub on every push to `main`
 - **Rate limiting** — Fixed-window rate limiter (100 requests/min per IP) to prevent abuse
-- **Memory-optimized MySQL** — Custom `my.cnf` with tuned buffer pool, connection limits, and disabled performance schema for low-memory instances
+- **MySQL configuration** — Custom `my.cnf` with tuned buffer pool and connection limits
 - **Structured logging** — Serilog with console and rolling-file sinks (7-day retention) for production diagnostics
 
 <details>
@@ -91,8 +84,6 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 
 **Server-side pagination** — List endpoints use a generic `PagedResult<T>` record and a `ToPagedResultAsync()` **extension method on `IQueryable<T>`**, pushing `Skip`/`Take` to the database rather than loading full tables into memory.
 
-**S3 file storage with interface abstraction** — File operations go through `IFileStorageService`, keeping controllers and services **decoupled from AWS**. The implementation (`S3FileStorageService`) uses the AWS SDK to upload, delete, and generate pre-signed download URLs (15-min expiry). Files are organized under a hierarchical key structure (`courses/{id}/assignments/{id}/students/{id}/{uuid}.ext`). A `FileValidationHelper` enforces allowed extensions and a 25 MB size limit before any upload reaches S3. On EC2, credentials resolve via IAM instance profile; locally, explicit keys can be set via configuration.
-
 **Structured logging with Serilog** — Replaced the default logging provider with Serilog for **structured, queryable logs**. Console and rolling-file sinks capture request context for production diagnostics.
 
 **Pomelo MySQL provider** — Chosen over Oracle's MySQL connector because Pomelo is the community-recommended EF Core provider for MySQL, with broader feature support and active maintenance for .NET 9.
@@ -110,9 +101,9 @@ Learning Management System/
 ├── Middleware/             # Global exception handling
 ├── wwwroot/               # Static assets (CSS, JS)
 ├── Dockerfile             # Multi-stage build (SDK → runtime)
-├── Deployment/            # MySQL config (my.cnf), Nginx, deploy scripts
-├── docker-compose.yml     # App + MySQL containers with memory limits
-├── .github/workflows/     # CI/CD pipeline (build, swap setup, deploy)
+├── Deployment/            # MySQL config (my.cnf)
+├── docker-compose.yml     # App + MySQL containers
+├── .github/workflows/     # CI/CD pipeline (build, push to Docker Hub)
 └── LMS.Tests/             # Unit tests (xUnit + in-memory SQLite)
 ```
 
@@ -201,14 +192,7 @@ The app auto-runs migrations and seeds demo data on startup when `SEED_DEMO_DATA
 
 ## Deployment
 
-The app runs on AWS EC2 behind an **Nginx reverse proxy** that handles TLS termination with a **Let's Encrypt** certificate. Nginx listens on ports 80 and 443, redirects all HTTP traffic to HTTPS, and proxies requests to the Docker container on port 8080.
-
-On every push to `main`, GitHub Actions:
-
-1. Builds a Docker image and pushes it to Docker Hub
-2. SSHs into EC2 and ensures a 2 GB swap file exists (OOM safety net)
-3. Copies `docker-compose.yml` and MySQL config to the server
-4. Pulls the new image and restarts the app container (MySQL data persists across deploys)
+On every push to `main`, GitHub Actions builds a Docker image and pushes it to Docker Hub.
 
 ### Required GitHub Secrets
 
@@ -216,12 +200,6 @@ On every push to `main`, GitHub Actions:
 |--------|-------------|
 | `DOCKERHUB_USERNAME` | Docker Hub username |
 | `DOCKERHUB_TOKEN` | Docker Hub access token |
-| `EC2_HOST` | EC2 public IP address |
-| `EC2_USER` | SSH user (e.g. `ubuntu`) |
-| `EC2_SSH_KEY` | PEM private key contents |
-| `AWS_ACCESS_KEY_ID` | IAM user access key for S3 |
-| `AWS_SECRET_ACCESS_KEY` | IAM user secret key for S3 |
-| `AWS_S3_BUCKET_NAME` | S3 bucket name (e.g. `lms-submissions`) |
 
 ## Testing
 
@@ -235,7 +213,7 @@ Tests use **xUnit** with an **in-memory SQLite** database (no external dependenc
 - `AssignmentServiceTests` — assignment creation, retrieval, and authorization
 - `SubmissionServiceTests` — submission creation, resubmission, deadline enforcement, and graded-lock validation
 - `GradeServiceTests` — grading, feedback, and duplicate grade prevention
-- `FileValidationHelperTests` — allowed/blocked extensions, size limits, and S3 key generation
+- `FileValidationHelperTests` — allowed/blocked extensions and size limits
 
 ## Routes
 
