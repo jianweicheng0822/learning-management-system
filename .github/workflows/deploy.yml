@@ -1,12 +1,29 @@
-# CI/CD pipeline: build Docker image on push to main, push to Docker Hub
+# CI pipeline: run the tests, then build the Docker image and push it to Docker Hub
 name: Build & Push
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Run tests
+        run: dotnet test LMS.Tests
+
+  # Only push an image when the tests pass on main
   build-and-push:
+    needs: test
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
