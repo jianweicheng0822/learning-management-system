@@ -97,14 +97,19 @@ public class SubmissionService(ApplicationDbContext db, IFileStorageService file
         return ServiceResult.Success(paged);
     }
 
-    public async Task<ServiceResult<string>> GetDownloadUrlAsync(int submissionId, string requestingUserId, bool isInstructorOrAdmin)
+    public async Task<ServiceResult<string>> GetDownloadUrlAsync(int submissionId, string requestingUserId, bool isAdmin)
     {
-        var submission = await db.Submissions.FirstOrDefaultAsync(s => s.Id == submissionId);
+        var submission = await db.Submissions
+            .Include(s => s.Assignment).ThenInclude(a => a.Course)
+            .FirstOrDefaultAsync(s => s.Id == submissionId);
         if (submission is null)
             return ServiceResult.Failure<string>(ErrorType.NotFound, "Submission not found.");
 
-        if (!isInstructorOrAdmin && submission.StudentId != requestingUserId)
-            return ServiceResult.Failure<string>(ErrorType.Unauthorized, "You can only download your own submissions.");
+        // Only the student who submitted, the course's instructor, or an admin can get a link
+        var isOwner = submission.StudentId == requestingUserId;
+        var isCourseInstructor = submission.Assignment.Course.InstructorId == requestingUserId;
+        if (!isAdmin && !isOwner && !isCourseInstructor)
+            return ServiceResult.Failure<string>(ErrorType.Unauthorized, "You don't have access to this submission.");
 
         if (string.IsNullOrWhiteSpace(submission.FilePath) || string.IsNullOrWhiteSpace(submission.OriginalFileName))
             return ServiceResult.Failure<string>(ErrorType.NotFound, "This submission has no attached file.");

@@ -189,7 +189,7 @@ public class SubmissionServiceTests : IDisposable
         _db.CreateSubmission(student.Id, assignment.Id, filePath: "s3/key.pdf", originalFileName: "hw.pdf");
 
         var submission = _db.Context.Submissions.First();
-        var result = await _sut.GetDownloadUrlAsync(submission.Id, student.Id, isInstructorOrAdmin: false);
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, student.Id, isAdmin: false);
 
         Assert.True(result.IsSuccess);
         Assert.Contains("s3/key.pdf", result.Value!);
@@ -207,10 +207,62 @@ public class SubmissionServiceTests : IDisposable
         _db.CreateSubmission(student1.Id, assignment.Id, filePath: "s3/key.pdf", originalFileName: "hw.pdf");
 
         var submission = _db.Context.Submissions.First();
-        var result = await _sut.GetDownloadUrlAsync(submission.Id, student2.Id, isInstructorOrAdmin: false);
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, student2.Id, isAdmin: false);
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.Unauthorized, result.Error);
+    }
+
+    [Fact]
+    public async Task GetDownloadUrlAsync_ReturnsUrl_ForCourseInstructor()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        _db.CreateSubmission(student.Id, assignment.Id, filePath: "s3/key.pdf", originalFileName: "hw.pdf");
+
+        var submission = _db.Context.Submissions.First();
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, instructor.Id, isAdmin: false);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task GetDownloadUrlAsync_ReturnsUnauthorized_ForInstructorOfAnotherCourse()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var otherInstructor = _db.CreateUser("inst-2", "Mary", "mary@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateCourse(otherInstructor.Id, "Other Course");
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        _db.CreateSubmission(student.Id, assignment.Id, filePath: "s3/key.pdf", originalFileName: "hw.pdf");
+
+        var submission = _db.Context.Submissions.First();
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, otherInstructor.Id, isAdmin: false);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Unauthorized, result.Error);
+    }
+
+    [Fact]
+    public async Task GetDownloadUrlAsync_ReturnsUrl_ForAdmin()
+    {
+        var instructor = _db.CreateUser("inst-1", "John", "john@test.com");
+        var student = _db.CreateUser("stu-1", "Jane", "jane@test.com");
+        var admin = _db.CreateUser("admin-1", "Ann", "ann@test.com");
+        var course = _db.CreateCourse(instructor.Id);
+        _db.CreateEnrollment(student.Id, course.Id);
+        var assignment = _db.CreateAssignment(course.Id);
+        _db.CreateSubmission(student.Id, assignment.Id, filePath: "s3/key.pdf", originalFileName: "hw.pdf");
+
+        var submission = _db.Context.Submissions.First();
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, admin.Id, isAdmin: true);
+
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
@@ -224,7 +276,7 @@ public class SubmissionServiceTests : IDisposable
         _db.CreateSubmission(student.Id, assignment.Id);
 
         var submission = _db.Context.Submissions.First();
-        var result = await _sut.GetDownloadUrlAsync(submission.Id, student.Id, isInstructorOrAdmin: false);
+        var result = await _sut.GetDownloadUrlAsync(submission.Id, student.Id, isAdmin: false);
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.NotFound, result.Error);

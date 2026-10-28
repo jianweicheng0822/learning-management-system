@@ -126,8 +126,7 @@ public class SubmissionController(
     public async Task<IActionResult> Download(int id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var isInstructorOrAdmin = User.IsInRole("Instructor") || User.IsInRole("Admin");
-        var result = await submissionService.GetDownloadUrlAsync(id, userId, isInstructorOrAdmin);
+        var result = await submissionService.GetDownloadUrlAsync(id, userId, User.IsInRole("Admin"));
 
         return HandleResult(result, url => Redirect(url));
     }
