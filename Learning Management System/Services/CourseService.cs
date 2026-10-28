@@ -57,7 +57,9 @@ public class CourseService(ApplicationDbContext db) : ICourseService
                     Description = a.Description,
                     DueDate = a.DueDate,
                     CourseId = a.CourseId,
-                    CourseName = c.Title,
+                    // Read the title through the assignment, not the outer course, so EF
+                    // doesn't need SQL APPLY (which SQLite, used in tests, can't run)
+                    CourseName = a.Course.Title,
                     SubmissionCount = a.Submissions.Count,
                     CreatedAt = a.CreatedAt
                 }).ToList()
