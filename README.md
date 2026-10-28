@@ -6,16 +6,22 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap%205-7952B3?style=flat&logo=bootstrap&logoColor=white)
+![AWS S3](https://img.shields.io/badge/AWS%20S3-569A31?style=flat&logo=amazons3&logoColor=white)
 ![xUnit](https://img.shields.io/badge/xUnit-512BD4?style=flat&logo=dotnet&logoColor=white)
 
-A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Entity Framework Core**, and **MySQL**. Supports role-based access for Admins, Instructors, and Students — with CI/CD, structured logging, and a comprehensive test suite.
+A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Entity Framework Core**, and **MySQL**. Admins, instructors and students each get their own role-based views; student submissions are stored in **AWS S3**.
+
+| Submit an assignment | Grade a submission |
+|----------------------|--------------------|
+| ![Submit Assignment](docs/screenshots/Submit%20Assignment.png) | ![Grading](docs/screenshots/grade.png) |
 
 ### Highlights
 
-- **Result pattern** for explicit error handling — no exception-driven control flow
-- **CI/CD pipeline** via GitHub Actions — auto-builds and pushes to Docker Hub
+- **Submissions in S3** with file type and size checks (25 MB max); files are served through 15-minute pre-signed links that only the student who submitted, the course's instructor or an admin can request
+- **Result pattern** for explicit error handling, so expected failures don't go through exceptions
 - **Server-side pagination** using a generic `PagedResult<T>` pushed down to the database
-- **Unit tests** with xUnit and in-memory SQLite covering all service-layer logic
+- **76 xUnit tests** against in-memory SQLite covering the service layer, access rules and file validation
+- **GitHub Actions** runs the tests on every push and pull request, and pushes a Docker image to Docker Hub only when they pass on `main`
 
 ## Tech Stack
 
@@ -24,13 +30,14 @@ A full-stack Learning Management System built with **ASP.NET Core 9 MVC**, **Ent
 | Backend | ASP.NET Core 9 MVC, C# |
 | ORM | Entity Framework Core (Pomelo MySQL provider) |
 | Database | MySQL 8.0 |
+| File storage | AWS S3 (AWS SDK for .NET, pre-signed URLs) |
 | Authentication | ASP.NET Identity, cookie-based sessions |
 | Authorization | Role-based (Admin, Instructor, Student) |
 | Frontend | Razor Views, Bootstrap 5 |
 | Logging | Serilog (structured logging to console + file sinks) |
 | Testing | xUnit, SQLite in-memory |
 | Containerization | Docker, Docker Compose |
-| CI/CD | GitHub Actions |
+| CI | GitHub Actions |
 
 ## Demo
 
@@ -47,6 +54,8 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 ### Submissions & Grading
 
 - **Assignments with deadlines** — Instructors create assignments with due dates; students submit work
+- **File uploads to S3** — Students attach a file (PDF, Office docs, source code, zip; up to 25 MB). The file is uploaded before the submission is saved, and removed again if saving fails, so S3 doesn't fill up with orphans
+- **Secure downloads** — Files are never public; each download is a 15-minute pre-signed S3 link, issued only to the submitting student, the course's instructor or an admin
 - **Assignment resubmission** — Students can revise and resubmit before the deadline; locked after grading or past due
 - **Grading with upsert pattern** — Instructors score submissions (0-100) with written feedback; duplicate grade attempts handled gracefully
 
@@ -54,13 +63,13 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 
 - **Auto-seeded demo data** — Pre-loaded courses, assignments, and users for immediate testing
 - **Dockerized deployment** — One-command setup with Docker Compose
-- **CI/CD pipeline** — Automatic build and push to Docker Hub on every push to `main`
+- **CI pipeline** — Tests run on every push and pull request; a Docker image is pushed to Docker Hub only when they pass on `main`
 - **Rate limiting** — Fixed-window rate limiter (100 requests/min per IP) to prevent abuse
 - **MySQL configuration** — Custom `my.cnf` with tuned buffer pool and connection limits
 - **Structured logging** — Serilog with console and rolling-file sinks (7-day retention) for production diagnostics
 
 <details>
-<summary>Screenshots</summary>
+<summary>More screenshots</summary>
 
 | Page | Preview |
 |------|---------|
@@ -86,6 +95,8 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 
 **Structured logging with Serilog** — Replaced the default logging provider with Serilog for **structured, queryable logs**. Console and rolling-file sinks capture request context for production diagnostics.
 
+**File storage behind an interface** — Controllers and services talk to `IFileStorageService`; `S3FileStorageService` is the real implementation and tests swap in a fake, so submission logic is tested without AWS. Object keys are built from course, assignment and student ids plus a random part, so two uploads never overwrite each other.
+
 **Pomelo MySQL provider** — Chosen over Oracle's MySQL connector because Pomelo is the community-recommended EF Core provider for MySQL, with broader feature support and active maintenance for .NET 9.
 
 ## Architecture
@@ -94,7 +105,7 @@ Demo accounts for each role (Admin, Instructor, Student) are seeded automaticall
 Learning Management System/
 ├── Controllers/           # MVC controllers (Course, Assignment, Submission, Grade, Account)
 ├── Models/                # EF Core entity models
-├── Services/              # Business logic layer (interfaces + implementations)
+├── Services/              # Business logic layer (interfaces + implementations, S3 storage)
 ├── DTOs/                  # Data transfer objects with validation
 ├── Views/                 # Razor views organized by controller
 ├── Data/                  # DbContext, migrations, seed data
@@ -103,7 +114,7 @@ Learning Management System/
 ├── Dockerfile             # Multi-stage build (SDK → runtime)
 ├── Deployment/            # MySQL config (my.cnf)
 ├── docker-compose.yml     # App + MySQL containers
-├── .github/workflows/     # CI/CD pipeline (build, push to Docker Hub)
+├── .github/workflows/     # CI pipeline (test, build, push to Docker Hub)
 └── LMS.Tests/             # Unit tests (xUnit + in-memory SQLite)
 ```
 
@@ -176,6 +187,14 @@ cp .env.example .env       # edit passwords if you want
 docker compose up --build
 ```
 
+File uploads need an S3 bucket. Add these to `.env` (everything else works without them):
+
+| Variable | What it's for |
+|----------|---------------|
+| `AWS_S3_BUCKET_NAME` | Bucket that holds submissions |
+| `AWS_S3_REGION` | Bucket region, default `us-east-1` |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Credentials with read/write access to the bucket |
+
 Visit http://localhost and log in with any demo account above.
 
 ### Without Docker
@@ -192,7 +211,7 @@ The app auto-runs migrations and seeds demo data on startup when `SEED_DEMO_DATA
 
 ## Deployment
 
-On every push to `main`, GitHub Actions builds a Docker image and pushes it to Docker Hub.
+On every push and pull request, GitHub Actions runs the test suite. On `main`, once the tests pass, it builds a Docker image and pushes it to Docker Hub.
 
 ### Required GitHub Secrets
 
@@ -207,7 +226,7 @@ On every push to `main`, GitHub Actions builds a Docker image and pushes it to D
 dotnet test LMS.Tests
 ```
 
-Tests use **xUnit** with an **in-memory SQLite** database (no external dependencies required). Coverage includes:
+**76 tests** using **xUnit** with an **in-memory SQLite** database and a fake file store (no MySQL or AWS needed). CI runs them on every push and pull request. Coverage includes:
 
 - `CourseServiceTests` — course CRUD, ownership, and enrollment validation
 - `AssignmentServiceTests` — assignment creation, retrieval, and authorization
